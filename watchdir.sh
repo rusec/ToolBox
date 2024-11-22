@@ -34,8 +34,17 @@ if ! command_exists git; then
 else
     echo "git is already installed."
 fi
+# Check if WATCH_DIR is passed as an argument
+if [ -z "$1" ]; then
+  # If not provided, prompt the user
+  read -p "Dir Path: " WATCH_DIR
+else
+  # If provided, use the first argument
+  WATCH_DIR=$1
+fi
 
-read -p "Dir Bath : " WATCH_DIR
+echo "Using directory: $WATCH_DIR"
+
 
 LOG_FILE="${WATCH_DIR//\//_}.log"
 # Ensure the log file exists
