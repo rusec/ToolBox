@@ -67,7 +67,7 @@ log_change() {
     if [[ "$file" == *.lock ]]; then 
         return 0
     fi
-    if [[ "$file" =~ .git ]]; then 
+    if [[ "$file" =~ .git/* ]]; then 
         return 0
     fi
     if [[ "$file" =~ /proc/ ]]; then 
