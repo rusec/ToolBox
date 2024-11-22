@@ -60,6 +60,7 @@ if [ ! -d "$WATCH_DIR/.git" ]; then
     git init
     git config --global user.name "dontworryaboutthisitsinthescript"
     git config --global user.email admin@admin.com
+    git branch -m "main"
     git add * 
     git commit -m "Initial commit" 
     cd - > /dev/null
