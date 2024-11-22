@@ -1,5 +1,6 @@
 #!/bin/bash
 
+: <<'END'
 # Function to check if a command exists
 command_exists() {
     command -v "$1" &> /dev/null
@@ -34,6 +35,9 @@ if ! command_exists git; then
 else
     echo "git is already installed."
 fi
+
+END
+
 # Check if WATCH_DIR is passed as an argument
 if [ -z "$1" ]; then
   # If not provided, prompt the user
