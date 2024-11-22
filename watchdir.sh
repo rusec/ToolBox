@@ -70,6 +70,12 @@ log_change() {
     if [[ "$file" =~ .git ]]; then 
         return 0
     fi
+    if [[ "$file" =~ /proc/ ]]; then 
+        return 0
+    fi
+    if [[ "$file" =~ /run/ ]]; then 
+        return 0
+    fi
     
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $event - $file"
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $event - $file" >> "$LOG_FILE"
