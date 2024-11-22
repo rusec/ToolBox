@@ -53,9 +53,9 @@ touch "$LOG_FILE"
 echo "Initializing git repo in dir"
 if [ ! -d "$WATCH_DIR/.git" ]; then 
     cd "$WATCH_DIR" 
+    git init
     git config --local user.name "dontworryaboutthisitsinthescript"
     git config --local user.email admin@admin.com
-    git init 
     git add * 
     git commit -m "Initial commit" 
     cd - > /dev/null
