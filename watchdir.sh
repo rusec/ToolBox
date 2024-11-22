@@ -78,6 +78,12 @@ log_change() {
     if [[ "$file" == *.swp ]]; then 
         return 0
     fi
+    if [[ "$file" == *.swpx ]]; then 
+        return 0
+    fi
+    if [[ "$file" == *~ ]]; then 
+        return 0
+    fi
     if [[ "$file" == *.lock ]]; then 
         return 0
     fi
