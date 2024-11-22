@@ -44,8 +44,8 @@ touch "$LOG_FILE"
 echo "Initializing git repo in dir"
 if [ ! -d "$WATCH_DIR/.git" ]; then 
     cd "$WATCH_DIR" 
-    git config --global user.name "dontworryaboutthisitsinthescript"
-    git config --global user.email admin@admin.com
+    git config --local user.name "dontworryaboutthisitsinthescript"
+    git config --local user.email admin@admin.com
     git init 
     git add * 
     git commit -m "Initial commit" 
@@ -62,8 +62,15 @@ log_change() {
     local event="$1"
     local file="$2"
     if [[ "$file" == *.swp ]]; then 
-        event="EDITING" 
+        return 0
     fi
+    if [[ "$file" == *.lock ]]; then 
+        return 0
+    fi
+    if [[ "$file" =~ .git ]]; then 
+        return 0
+    fi
+    
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $event - $file"
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $event - $file" >> "$LOG_FILE"
     # dont commit on swp files
