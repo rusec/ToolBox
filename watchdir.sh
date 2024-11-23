@@ -98,6 +98,15 @@ backup_git_directories() {
     mkdir -p "$backup_dir"
     cp -r "$target_dir/.git" $backup_dir
     echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
+    # Remove old backups if more than 6 exist
+    local backups_count=$(ls -1 "${backup_base_dir}/${repo_name}" | wc -l)
+    if [ "$backups_count" -gt 6 ]; then
+        local backups_to_delete=$((backups_count - 6))
+        ls -1t "${backup_base_dir}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} rm -rf "${backup_base_dir}/${repo_name}/{}"
+        echo "Deleted $backups_to_delete old backups." >> "$LOG_GIT_FILE"
+    fi
+
+    
 }
 
 # Function to log changes
