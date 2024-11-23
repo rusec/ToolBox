@@ -28,7 +28,7 @@ if ! command_exists inotifywait; then
 else
     echo "inotify-tools is already installed."
 fi
-
+ 
 if ! command_exists git; then
     echo "git is not installed. Installing..."
     install_pkg "git"
@@ -37,6 +37,18 @@ else
 fi
 
 END
+
+initizialize_git_repo() {
+    cd "$WATCH_DIR" 
+    git init
+    git config --global user.name "dontworryaboutthisitsinthescript"
+    git config --global user.email admin@admin.com
+    git branch -m "main"
+    git add * 
+    git commit -m "Initial commit" 
+    cd - > /dev/null
+    echo "Initializing git repo in dir"
+}
 
 # Check if WATCH_DIR is passed as an argument
 if [ -z "$1" ]; then
@@ -49,27 +61,40 @@ fi
 
 echo "Using directory: $WATCH_DIR"
 
-
-LOG_FILE="${WATCH_DIR//\//_}.log"
+BASENAME=$(basename $WATCH_DIR)
+LOG_FILE="$BASENAME.log"
 # Ensure the log file exists
 touch "$LOG_FILE"
 
 echo "Initializing git repo in dir"
 if [ ! -d "$WATCH_DIR/.git" ]; then 
-    cd "$WATCH_DIR" 
-    git init
-    git config --global user.name "dontworryaboutthisitsinthescript"
-    git config --global user.email admin@admin.com
-    git branch -m "main"
-    git add * 
-    git commit -m "Initial commit" 
-    cd - > /dev/null
+   initizialize_git_repo
 fi
 echo "_________________________________________________"
 echo "useful commands:"
 echo "- git reset --hard <Sha256 commit hash>"
 echo "- git log"
 echo "_________________________________________________"
+
+add_commit() {
+    local event="$1"
+    local file="$2"
+    git -C "$WATCH_DIR" add "$file" > /dev/null
+    git -C "$WATCH_DIR" commit -m "$event $file" > /dev/null
+}
+# Function to back up .git directories to /backup_dir
+backup_git_directories() {
+    local backup_base_dir="/tmp/windex"
+    local timestamp=$(date '+%Y%m%d%H%M%S')
+    local repo_name=$BASENAME
+    local backup_dir="${backup_base_dir}/${repo_name}"
+    local backup_file="${backup_dir}/${timestamp}.tar.gz"
+    local dir ="$WATCH_DIR/.git"
+    
+    mkdir -p "$backup_dir"
+    tar -czf "$backup_file" -C "$dir" .git
+    echo "Backed up $dir/.git to $backup_file"
+}
 
 # Function to log changes
 log_change() {
@@ -99,14 +124,22 @@ log_change() {
     
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $event - $file"
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $event - $file" >> "$LOG_FILE"
-    # dont commit on swp files
-    if [[ "$file" != *.swp ]]; then 
-        git -C "$WATCH_DIR" add "$file" > /dev/null
-        git -C "$WATCH_DIR" commit -m "$event $file" > /dev/null
+    
+    if [ ! -d "$WATCH_DIR/.git" ]; then 
+       initizialize_git_repo
     fi
+    add_commit $event $file 
 }
+
 
 # Start watching the directory and subdirectories
 inotifywait -m -r -e modify,create,delete,move "$WATCH_DIR" --format '%e %w%f' | while read event file; do
     log_change "$event" "$file"
+done & 
+
+# Periodically back up .git directories every 10 minutes
+while true; do
+    backup_git_directories
+    sleep 60  # 600 seconds = 10 minutes
 done
+
