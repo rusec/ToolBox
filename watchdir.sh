@@ -90,10 +90,10 @@ backup_git_directories() {
     local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
     local repo_name=$BASENAME
     local backup_dir="${backup_base_dir}/${repo_name}/${timestamp}"
-    
+    local target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
     mkdir -p "$backup_dir"
-    cp -r "$WATCH_DIR/.git" $backup_dir
-    echo "Backed up $WATCH_DIR/.git to $backup_dir" >> $LOG_GIT_FILE
+    cp -r "$target_dir/.git" $backup_dir
+    echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
 }
 
 # Function to log changes
