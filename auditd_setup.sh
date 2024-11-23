@@ -56,8 +56,6 @@ configure_auditd() {
     echo "-a always,exit -F arch=b32 -S execve -k commands" | sudo tee -a "$AUDIT_RULES_FILE" >/dev/null
     echo "-a exit,always -F arch=b64 -F euid=0 -S execve -k  commands" | sudo tee -a "$AUDIT_RULES_FILE" >/dev/null
     echo "-a exit,always -F arch=b32 -F euid=0 -S execve -k  commands" | sudo tee -a "$AUDIT_RULES_FILE" >/dev/null
-    echo "-a exit,always -F arch=b64 -S execve -k command_exec" | sudo tee -a "$AUDIT_RULES_FILE" >/dev/null
-    echo "-a exit,always -F arch=b32 -S execve -k command_exec" | sudo tee -a "$AUDIT_RULES_FILE" >/dev/null
 
     # Restart auditd to apply the new rules
     sudo systemctl restart auditd
