@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Directory to move the binaries to
-DEST_DIR="/path/to/backup/directory"
+DEST_DIR="/tmp/safe"
 
 # List of GTFOBins (Note: This is a partial list for demonstration; the full list should be checked on the GTFOBins website)
 GTFOBINS=(
