@@ -92,7 +92,7 @@ backup_git_directories() {
     local backup_dir="${backup_base_dir}/${repo_name}/${timestamp}"
     
     mkdir -p "$backup_dir"
-    cp "$WATCH_DIR/.git" $backup_dir
+    cp -r "$WATCH_DIR/.git" $backup_dir
     echo "Backed up $WATCH_DIR/.git to $backup_dir" >> $LOG_GIT_FILE
 }
 
