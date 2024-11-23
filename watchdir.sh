@@ -62,11 +62,15 @@ fi
 echo "Using directory: $WATCH_DIR"
 
 BASENAME=$(basename $WATCH_DIR)
-LOG_FILE="$BASENAME.log"
-LOG_GIT_FILE="$BASENAME.git.log"
+$LOG_DIR= "./logs"
+
+mkdir -p $LOG_DIR
+LOG_FILE="$LOG_DIR/$BASENAME.log"
+LOG_GIT_FILE="$LOG_DIR/$BASENAME.git.log"
 
 # Ensure the log file exists
 touch "$LOG_FILE"
+touch "$LOG_GIT_FILE"
 
 echo "Initializing git repo in dir"
 if [ ! -d "$WATCH_DIR/.git" ]; then 
