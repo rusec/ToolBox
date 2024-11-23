@@ -89,12 +89,11 @@ backup_git_directories() {
     local backup_base_dir="/tmp/windex"
     local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
     local repo_name=$BASENAME
-    local backup_dir="${backup_base_dir}/${repo_name}"
-    local backup_file="${backup_dir}/${timestamp}.tar.gz"
+    local backup_dir="${backup_base_dir}/${repo_name}/${timestamp}"
     
     mkdir -p "$backup_dir"
-    tar -czf "$backup_file" -C "$WATCH_DIR" .git
-    echo "Backed up $WATCH_DIR/.git to $backup_file" >> $LOG_GIT_FILE
+    cp "$WATCH_DIR/.git" $backup_dir
+    echo "Backed up $WATCH_DIR/.git to $backup_dir" >> $LOG_GIT_FILE
 }
 
 # Function to log changes
