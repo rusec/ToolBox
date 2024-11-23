@@ -63,6 +63,8 @@ echo "Using directory: $WATCH_DIR"
 
 BASENAME=$(basename $WATCH_DIR)
 LOG_FILE="$BASENAME.log"
+LOG_GIT_FILE="$BASENAME.git.log"
+
 # Ensure the log file exists
 touch "$LOG_FILE"
 
@@ -92,7 +94,7 @@ backup_git_directories() {
     
     mkdir -p "$backup_dir"
     tar -czf "$backup_file" -C "$WATCH_DIR" .git
-    echo "Backed up $WATCH_DIR/.git to $backup_file"
+    echo "Backed up $WATCH_DIR/.git to $backup_file" >> $LOG_GIT_FILE
 }
 
 # Function to log changes
