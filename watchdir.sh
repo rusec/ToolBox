@@ -85,15 +85,14 @@ add_commit() {
 # Function to back up .git directories to /backup_dir
 backup_git_directories() {
     local backup_base_dir="/tmp/windex"
-    local timestamp=$(date '+%Y%m%d%H%M%S')
+    local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
     local repo_name=$BASENAME
     local backup_dir="${backup_base_dir}/${repo_name}"
     local backup_file="${backup_dir}/${timestamp}.tar.gz"
-    local dir ="$WATCH_DIR/.git"
     
     mkdir -p "$backup_dir"
-    tar -czf "$backup_file" -C "$dir" .git
-    echo "Backed up $dir/.git to $backup_file"
+    tar -czf "$backup_file" -C "$WATCH_DIR" .git
+    echo "Backed up $WATCH_DIR/.git to $backup_file"
 }
 
 # Function to log changes
