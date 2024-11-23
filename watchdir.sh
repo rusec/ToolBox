@@ -62,7 +62,7 @@ fi
 echo "Using directory: $WATCH_DIR"
 
 BASENAME=$(basename $WATCH_DIR)
-$LOG_DIR= "./logs"
+$LOG_DIR="./logs"
 
 mkdir -p $LOG_DIR
 LOG_FILE="$LOG_DIR/$BASENAME.log"
