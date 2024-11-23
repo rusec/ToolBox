@@ -100,8 +100,8 @@ backup_git_directories() {
     echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
     # Remove old backups if more than 6 exist
     local backups_count=$(ls -1 "${backup_base_dir}/${repo_name}" | wc -l)
-    if [ "$backups_count" -gt 10 ]; then
-        local backups_to_delete=$((backups_count - 10))
+    if [ "$backups_count" -gt 6 ]; then
+        local backups_to_delete=$((backups_count - 6))
         ls -1t "${backup_base_dir}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} rm -rf "${backup_base_dir}/${repo_name}/{}"
         echo "Deleted $backups_to_delete old backups." >> "$LOG_GIT_FILE"
     fi
@@ -153,6 +153,6 @@ done &
 # Periodically back up .git directories every 10 minutes
 while true; do
     backup_git_directories
-    sleep 60  # 600 seconds = 10 minutes
+    sleep 600  # 600 seconds = 10 minutes
 done
 
