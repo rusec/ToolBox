@@ -3,6 +3,11 @@
 # Directory to move the binaries to
 DEST_DIR="/tmp/safe"
 
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" &> /dev/null
+}
+
 # List of GTFOBins (Note: This is a partial list for demonstration; the full list should be checked on the GTFOBins website)
 GTFOBINS=(
     "dd"
@@ -48,7 +53,7 @@ GTFOBINS=(
 # Function to move a GTFOBin to the destination directory and make it non-executable
 move_bin() {
     bin=$1
-    if command -v "$bin" &> /dev/null; then
+    if command_exists "$bin"; then
         mv "$(command -v "$bin")" "$DEST_DIR"
         chmod -x "$DEST_DIR/$bin"
         echo "Moved $bin to $DEST_DIR and made it non-executable"
@@ -63,7 +68,7 @@ restore_bin() {
     if [ -f "$DEST_DIR/$bin" ]; then
         mv "$DEST_DIR/$bin" "/usr/bin/$bin"
         chmod +x "/usr/bin/$bin"
-        echo "Moved $bin back to /usr/bin and restored executability"
+        echo "Moved $bin back to /usr/bin and restored executable permissions"
     else
         echo "$bin not found in $DEST_DIR"
     fi
@@ -78,11 +83,11 @@ fi
 echo "Choose an action:"
 echo "1. Move GTFOBins to a different location and make them non-executable"
 echo "2. Restore GTFOBins to their original locations and make them executable"
-read -p "Enter your choice (1 or 2): " choice
+read -p -r "Enter your choice (1 or 2): " choice
 
 if [[ $choice -eq 1 ]]; then
     echo "Enter the name of the binary to move (or 'all' to move all GTFOBins):"
-    read -p "Binary name: " bin_name
+    read -p -r "Binary name: " bin_name
     if [[ $bin_name == "all" ]]; then
         for bin in "${GTFOBINS[@]}"; do
             move_bin "$bin"
@@ -94,7 +99,7 @@ fi
 
 if [[ $choice -eq 2 ]]; then
     echo "Enter the name of the binary to restore (or 'all' to restore all GTFOBins):"
-    read -p "Binary name: " bin_name
+    read -p -r "Binary name: " bin_name
     if [[ $bin_name == "all" ]]; then
         for bin in "${GTFOBINS[@]}"; do
             restore_bin "$bin"

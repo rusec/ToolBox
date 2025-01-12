@@ -165,8 +165,7 @@ backup_git_directories() {
 log_change() {
     local event="$1"
     local file="$2"
-    local misc="$3"
-    echo misc: "$misc"
+    
     if [[ "$file" == *.swp ]]; then
         return 0
     fi
@@ -189,8 +188,8 @@ log_change() {
         return 0
     fi
     
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $event - $file"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $event - $file" >> "$LOG_FILE"
+    echo "$(date '%H:%M:%S +%Y-%m-%d') - $event - $file"
+    echo "$(date '%H:%M:%S +%Y-%m-%d') - $event - $file" >> "$LOG_FILE"
     
     if [ ! -d "$WATCH_DIR/.git" ]; then
         initialize_git_repo
