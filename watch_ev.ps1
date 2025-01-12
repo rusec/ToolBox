@@ -1,4 +1,5 @@
-echo  "Log Paths: "$env:SystemRoot"\System32\Winevt\Logs"
+Write-Output "Log Paths: "$env:SystemRoot"\System32\Winevt\Logs"
+
 $logname = Read-Host "Enter a log file name:"
 
 # Taken from Stack Overflow https://stackoverflow.com/questions/15262196/powershell-tail-windows-event-log-is-it-possible

@@ -90,7 +90,9 @@ if [[ $choice -eq 1 ]]; then
     else
         move_bin "$bin_name"
     fi
-elif [[ $choice -eq 2 ]]; then
+fi
+
+if [[ $choice -eq 2 ]]; then
     echo "Enter the name of the binary to restore (or 'all' to restore all GTFOBins):"
     read -p "Binary name: " bin_name
     if [[ $bin_name == "all" ]]; then
