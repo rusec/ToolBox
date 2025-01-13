@@ -7,7 +7,7 @@ command_exists() {
 # Check if WATCH_DIR is passed as an argument
 if [ -z "$1" ]; then
     # If not provided, prompt the user
-    read -p -r "Dir Path: " WATCH_DIR
+    read -r -p "Dir Path: " WATCH_DIR || exit 1
 else
     # If provided, use the first argument
     WATCH_DIR=$1
