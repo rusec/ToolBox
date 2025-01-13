@@ -7,7 +7,7 @@ command_exists() {
 # Check if WATCH_DIR is passed as an argument
 if [ -z "$1" ]; then
     # If not provided, prompt the user
-    read -p "Dir Path: " WATCH_DIR
+    read -p -r "Dir Path: " WATCH_DIR
 else
     # If provided, use the first argument
     WATCH_DIR=$1
@@ -16,7 +16,7 @@ fi
 echo "Using directory: $WATCH_DIR"
 
 BASENAME=$(basename $WATCH_DIR)
-LOG_DIR="./logs"
+LOG_DIR="$HOME/logs"
 
 mkdir -p $LOG_DIR
 LOG_FILE="$LOG_DIR/$BASENAME.log"
@@ -104,7 +104,7 @@ initialize_git_repo() {
 
 initialize_auditd() {
     echo "Initializing auditd"
-    auditctl -w "$WATCH_DIR" -p war -k watchdir
+    auditctl -w "$WATCH_DIR" -p war -k "watchdir-script"
     echo "Initialized auditd"
 }
 
@@ -117,6 +117,8 @@ echo "Initializing git repo in dir"
 if [ ! -d "$WATCH_DIR/.git" ]; then
     initialize_git_repo
 fi
+
+
 echo "_________________________________________________"
 echo "useful commands:"
 echo "GIT: "
@@ -142,7 +144,7 @@ add_commit() {
 # Function to back up .git directories to /backup_dir
 backup_git_directories() {
     local backup_base_dir="/tmp/windex"
-    local timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
+    local timestamp=$(date '+%Y-%m-%d_%I-%M-%S')
     local repo_name=$BASENAME
     local backup_dir="${backup_base_dir}/${repo_name}/${timestamp}"
     local target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
@@ -188,8 +190,8 @@ log_change() {
         return 0
     fi
     
-    echo "$(date '%H:%M:%S +%Y-%m-%d') - $event - $file"
-    echo "$(date '%H:%M:%S +%Y-%m-%d') - $event - $file" >> "$LOG_FILE"
+    echo "$(date '%I:%M:%S +%Y-%m-%d') - $event - $file"
+    echo "$(date '%I:%M:%S +%Y-%m-%d') - $event - $file" >> "$LOG_FILE"
     
     if [ ! -d "$WATCH_DIR/.git" ]; then
         initialize_git_repo
@@ -201,7 +203,7 @@ log_change() {
 
 
 # Start watching the directory and subdirectories
-inotifywait -m -r -e access,modify,create,delete,move "$WATCH_DIR" --format '%e %w%f' | while read event file; do
+inotifywait -m -r -e access,modify,create,delete,move "$WATCH_DIR" --format '%e %w%f' | while read -r event file; do
     log_change "$event" "$file"
 done &
 
