@@ -3,6 +3,15 @@
 command_exists() {
     command -v "$1" &> /dev/null
 }
+get_path(){
+    if command_exists realpath; then
+        realpath "$1"
+        elif command_exists readlink; then
+        readlink -f "$1"
+    else
+        echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
+    fi
+}
 
 # Check if WATCH_DIR is passed as an argument
 if [ -z "$1" ]; then
@@ -12,16 +21,20 @@ else
     # If provided, use the first argument
     WATCH_DIR=$1
 fi
+WATCH_DIR=$(get_path "$WATCH_DIR")
 
 echo "Using directory: $WATCH_DIR"
 
 BASENAME=$(basename $WATCH_DIR)
-LOG_DIR="./logs"
+LOG_DIR=$(get_path "./logs")
+
 
 mkdir -p $LOG_DIR
 LOG_FILE="$LOG_DIR/$BASENAME.log"
 LOG_GIT_FILE="$LOG_DIR/$BASENAME.git.log"
-
+LOG_ACCESS_LOG_FILE="$LOG_DIR/$BASENAME.access.log"
+AUDITDKEY="watchdir-script"
+BACKUP_DELAY=600
 
 # Check and install a pkg if not present
 install_pkg() {
@@ -58,6 +71,46 @@ install_pkg() {
     fi
 }
 
+restart_service() {
+    if command_exists systemctl; then
+        sudo systemctl restart $1
+        elif command_exists service; then
+        sudo service $1 restart
+        elif command_exists initctl; then
+        sudo initctl restart $1
+        elif command_exists rc-service; then
+        sudo rc-service $1 restart
+        elif command_exists sv; then
+        sudo sv restart $1
+        elif command_exists openrc-service; then
+        sudo openrc-service $1 restart
+        elif command_exists launchctl; then
+        sudo launchctl stop $1
+        sudo launchctl start $1
+        elif command_exists rcctl; then
+        sudo rcctl restart $1
+        elif command_exists s6-svc; then
+        sudo s6-svc -r /run/s6/services/$1
+        elif command_exists supervisorctl; then
+        sudo supervisorctl restart $1
+        elif command_exists sv; then
+        sudo sv restart $1
+        elif command_exists runit; then
+        sudo sv restart $1
+        elif command_exists daemontools; then
+        sudo svc -t /service/$1
+        elif command_exists sysv-rc-conf; then
+        sudo sysv-rc-conf $1 restart
+        elif command_exists update-rc.d; then
+        sudo update-rc.d $1 defaults
+        elif command_exists chkconfig; then
+        sudo chkconfig $1 on
+    else
+        echo "Service manager not supported. Please restart $1 manually."
+    fi
+}
+
+echo "Checking dependencies..."
 # Check if inotifywait is installed, install if not
 if ! command_exists inotifywait; then
     echo "inotify-tools is not installed. Installing..."
@@ -79,7 +132,7 @@ if ! command_exists auditctl; then
 else
     echo "auditd is already installed."
 fi
-
+echo ""
 
 # Function to exit with an error message
 exit_with_error() {
@@ -104,8 +157,14 @@ initialize_git_repo() {
 
 initialize_auditd() {
     echo "Initializing auditd"
-    auditctl -w "$WATCH_DIR" -p war -k "watchdir-script"
+    
+    auditctl -w "$WATCH_DIR" -p war -k "$AUDITDKEY"
+    
     echo "Initialized auditd"
+    
+    restart_service auditd
+    
+    echo "Restarted auditd"
 }
 
 
@@ -113,29 +172,44 @@ initialize_auditd() {
 touch "$LOG_FILE"
 touch "$LOG_GIT_FILE"
 
-echo "Initializing git repo in dir"
+
 if [ ! -d "$WATCH_DIR/.git" ]; then
+    echo "Initializing git repo in dir"
     initialize_git_repo
+    initialize_auditd
 fi
 
-
+echo ""
 echo "_________________________________________________"
-echo "useful commands:"
+echo "                                                 "
+echo "              Useful commands                    "
+echo "                                                 "
+echo "_________________________________________________"
+echo "                                                 "
 echo "GIT: "
-echo "- git reset --hard <Sha256 commit hash>"
-echo "- git log"
-echo "- git status"
+echo "    - git reset --hard <Sha256 commit hash>"
+echo "    - git log"
+echo "    - git status"
+echo "                                                 "
 echo "_________________________________________________"
+echo "                                                 "
+echo "AUDITD: "
+echo "    - ausearch -k $AUDITDKEY"
+echo "    - aureport -k"
+echo "    - auditctl -l"
+echo "                                                 "
+echo "_________________________________________________"
+echo ""
 
 add_commit() {
     local event="$1"
     local file="$2"
     
-    if [[ "$event" == "CREATE" ]] || [[ "$event" == "MODIFY" ]] || [[ "$event" == "DELETE" ]] || [[ "$event" == "MOVED_TO" ]]; then
-        echo "Adding $file to git"
-    else
+    if [[ "$event" = "ACCESS" ]] ||  [[ "$event" = "ACCESS,ISDIR" ]]; then
         return 0
     fi
+    
+    echo "Adding $file to git"
     
     git -C "$WATCH_DIR" add "$file" > /dev/null
     git -C "$WATCH_DIR" commit -m "$event $file" > /dev/null
@@ -168,30 +242,17 @@ log_change() {
     local event="$1"
     local file="$2"
     
-    if [[ "$file" == *.swp ]]; then
-        return 0
-    fi
-    if [[ "$file" == *.swpx ]]; then
-        return 0
-    fi
-    if [[ "$file" == *~ ]]; then
-        return 0
-    fi
-    if [[ "$file" == *.lock ]]; then
-        return 0
-    fi
-    if [[ "$file" =~ .git/* ]]; then
-        return 0
-    fi
-    if [[ "$file" =~ /proc/ ]]; then
-        return 0
-    fi
-    if [[ "$file" =~ /run/ ]]; then
+    if [[ "$file" == *.swp ]] || [[ "$file" == *.swpx ]] || [[ "$file" == *~ ]] || [[ "$file" == *.lock ]] || [[ "$file" =~ .git/* ]] || [[ "$file" =~ /proc/ ]] || [[ "$file" =~ /run/ ]]; then
         return 0
     fi
     
     echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file"
-    echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_FILE"
+    
+    if [[ "$event" = "ACCESS" ]] || [[ "$event" = "ACCESS,ISDIR" ]]; then
+        echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_ACCESS_LOG_FILE"
+    else
+        echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_FILE"
+    fi
     
     if [ ! -d "$WATCH_DIR/.git" ]; then
         initialize_git_repo
@@ -211,6 +272,6 @@ done &
 # Periodically back up .git directories every 10 minutes
 while true; do
     backup_git_directories
-    sleep 600  # 600 seconds = 10 minutes
+    sleep $BACKUP_DELAY  # 600 seconds = 10 minutes
 done
 
