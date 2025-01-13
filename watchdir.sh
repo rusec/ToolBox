@@ -16,7 +16,7 @@ fi
 echo "Using directory: $WATCH_DIR"
 
 BASENAME=$(basename $WATCH_DIR)
-LOG_DIR="$HOME/logs"
+LOG_DIR="./logs"
 
 mkdir -p $LOG_DIR
 LOG_FILE="$LOG_DIR/$BASENAME.log"
@@ -190,13 +190,14 @@ log_change() {
         return 0
     fi
     
-    echo "$(date '%I:%M:%S +%Y-%m-%d') - $event - $file"
-    echo "$(date '%I:%M:%S +%Y-%m-%d') - $event - $file" >> "$LOG_FILE"
+    echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file"
+    echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_FILE"
     
     if [ ! -d "$WATCH_DIR/.git" ]; then
         initialize_git_repo
         initialize_auditd
     fi
+    
     
     add_commit $event $file
 }
