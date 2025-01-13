@@ -149,8 +149,8 @@ initialize_git_repo() {
     git config --global user.name "dontworryaboutthisitsinthescript"
     git config --global user.email admin@admin.com
     git branch -m "main"
-    git add *
-    git commit -m "Initial commit"
+    git add * || true
+    git commit -m "Initial commit" || true
     cd - > /dev/null || exit_with_error "Could not change to previous directory"
     echo "Initializing git repo in dir"
 }
@@ -158,7 +158,7 @@ initialize_git_repo() {
 initialize_auditd() {
     echo "Initializing auditd"
     
-    auditctl -w "$WATCH_DIR" -p war -k "$AUDITDKEY"
+    sudo auditctl -w "$WATCH_DIR" -p war -k "$AUDITDKEY"
     
     echo "Initialized auditd"
     
@@ -211,24 +211,27 @@ add_commit() {
     
     echo "Adding $file to git"
     
-    git -C "$WATCH_DIR" add "$file" > /dev/null
-    git -C "$WATCH_DIR" commit -m "$event $file" > /dev/null
+    git -C "$WATCH_DIR" add "$file" > /dev/null || true
+    git -C "$WATCH_DIR" commit -m "$event $file" > /dev/null || true
 }
 
 # Function to back up .git directories to /backup_dir
 backup_git_directories() {
     local backup_base_dir="/tmp/windex"
-    local timestamp=$(date '+%Y-%m-%d_%I-%M-%S')
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d_%I-%M-%S')
     local repo_name=$BASENAME
     local backup_dir="${backup_base_dir}/${repo_name}/${timestamp}"
-    local target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
+    local target_dir
+    target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
     
     mkdir -p "$backup_dir"
     cp -r "$target_dir/.git" $backup_dir
     echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
     
     # Remove old backups if more than 6 exist
-    local backups_count=$(ls -1 "${backup_base_dir}/${repo_name}" | wc -l)
+    local backups_count
+    backups_count=$(ls -1 "${backup_base_dir}/${repo_name}" | wc -l)
     if [ "$backups_count" -gt 6 ]; then
         local backups_to_delete=$((backups_count - 6))
         ls -1t "${backup_base_dir}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} rm -rf "${backup_base_dir}/${repo_name}/{}"
@@ -242,11 +245,11 @@ log_change() {
     local event="$1"
     local file="$2"
     
-    if [[ "$file" == *.swp ]] || [[ "$file" == *.swpx ]] || [[ "$file" == *~ ]] || [[ "$file" == *.lock ]] || [[ "$file" =~ .git/* ]] || [[ "$file" =~ /proc/ ]] || [[ "$file" =~ /run/ ]]; then
+    echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file"
+    
+    if [[ "$file" == *.swp ]] || [[ "$file" == *.swpx ]] || [[ "$file" == *~ ]] || [[ "$file" == *.lock ]] || [[ "$file" == *.git/* ]] || [[ "$file" == /proc/ ]] || [[ "$file" == /run/ ]]; then
         return 0
     fi
-    
-    echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file"
     
     if [[ "$event" = "ACCESS" ]] || [[ "$event" = "ACCESS,ISDIR" ]]; then
         echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_ACCESS_LOG_FILE"
@@ -273,5 +276,5 @@ done &
 while true; do
     backup_git_directories
     sleep $BACKUP_DELAY  # 600 seconds = 10 minutes
-done
+done &
 
