@@ -29,12 +29,19 @@ BASENAME=$(basename $WATCH_DIR)
 LOG_DIR=$(get_path "./logs")
 
 
+
 mkdir -p $LOG_DIR
 LOG_FILE="$LOG_DIR/$BASENAME.log"
 LOG_GIT_FILE="$LOG_DIR/$BASENAME.git.log"
 LOG_ACCESS_LOG_FILE="$LOG_DIR/$BASENAME.access.log"
 AUDITDKEY="watchdir-script"
-BACKUP_DELAY=600
+BACKUP_DIR="/tmp/windex"
+
+if [ "$IS_DEV" = "1" ]; then
+    BACKUP_DELAY=60
+else
+    BACKUP_DELAY=600
+fi
 
 # Check and install a pkg if not present
 install_pkg() {
@@ -111,28 +118,25 @@ restart_service() {
 }
 
 echo "Checking dependencies..."
+
 # Check if inotifywait is installed, install if not
 if ! command_exists inotifywait; then
     echo "inotify-tools is not installed. Installing..."
     install_pkg "inotify-tools"
-else
-    echo "inotify-tools is already installed."
+    
 fi
 
 if ! command_exists git; then
     echo "git is not installed. Installing..."
     install_pkg "git"
-else
-    echo "git is already installed."
 fi
 
 if ! command_exists auditctl; then
     echo "auditd is not installed. Installing..."
     install_pkg "auditd"
-else
-    echo "auditd is already installed."
 fi
-echo ""
+
+
 
 # Function to exit with an error message
 exit_with_error() {
@@ -142,23 +146,43 @@ exit_with_error() {
     exit 1
 }
 
+copy_initial_git_repo(){
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d_%I-%M-%S')
+    local repo_name=$BASENAME
+    local backup_dir="${BACKUP_DIR}/${repo_name}_init/${timestamp}"
+    local target_dir
+    target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
+    
+    mkdir -p "$backup_dir"
+    sudo cp -r "$target_dir/.git" $backup_dir
+    echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
+}
+
+
 initialize_git_repo() {
     cd "$WATCH_DIR" || exit_with_error "Could not change to directory $WATCH_DIR"
     echo "Initializing git repo in dir $WATCH_DIR"
     git init
     git config --global user.name "dontworryaboutthisitsinthescript"
     git config --global user.email admin@admin.com
+    git config --global --add safe.directory $WATCH_DIR
     git branch -m "main"
     git add * || true
     git commit -m "Initial commit" || true
     cd - > /dev/null || exit_with_error "Could not change to previous directory"
     echo "Initializing git repo in dir"
+    
+    copy_initial_git_repo
 }
+
 
 initialize_auditd() {
     echo "Initializing auditd"
     
-    sudo auditctl -w "$WATCH_DIR" -p war -k "$AUDITDKEY"
+    if ! sudo auditctl -w "$WATCH_DIR" -p war -k "$AUDITDKEY"; then
+        sudo auditctl -a always,exit -F dir="$WATCH_DIR" -F perm=war -k "$AUDITDKEY"
+    fi
     
     echo "Initialized auditd"
     
@@ -171,6 +195,7 @@ initialize_auditd() {
 # Ensure the log file exists
 touch "$LOG_FILE"
 touch "$LOG_GIT_FILE"
+touch "$LOG_ACCESS_LOG_FILE"
 
 
 if [ ! -d "$WATCH_DIR/.git" ]; then
@@ -181,22 +206,48 @@ fi
 
 echo ""
 echo "_________________________________________________"
-echo "                                                 "
-echo "              Useful commands                    "
-echo "_________________________________________________"
-echo "                                                 "
-echo "GIT: "
-echo "    - git reset --hard <Sha256 commit hash>"
-echo "    - git log"
-echo "    - git status"
-echo "_________________________________________________"
-echo "                                                 "
-echo "AUDITD: "
-echo "    - ausearch -k $AUDITDKEY"
-echo "    - aureport -k"
-echo "    - auditctl -l"
-echo "_________________________________________________"
+echo "|                                               |"
+echo "|              Useful Commands                  |"
+echo "|_______________________________________________|"
+echo "|                                               |"
+echo "| GIT:                                          |"
+echo "|    - git reset --hard <Sha256 commit hash>    |"
+echo "|    - git log                                  |"
+echo "|    - git status                               |"
+echo "|_______________________________________________|"
+echo "|                                               |"
+echo "| AUDITD:                                       |"
+echo "|    - ausearch -k $AUDITDKEY                   |"
+echo "|    - aureport -k                              |"
+echo "|    - auditctl -l                              |"
+echo "|_______________________________________________|"
 echo ""
+
+
+# Function to back up .git directories to /backup_dir
+backup_git_directories() {
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d_%I-%M-%S')
+    local repo_name=$BASENAME
+    local backup_dir="${BACKUP_DIR}/${repo_name}/${timestamp}"
+    local target_dir
+    target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
+    
+    mkdir -p "$backup_dir"
+    sudo cp -r "$target_dir/.git" $backup_dir
+    echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
+    
+    # Remove old backups if more than 6 exist
+    local backups_count
+    backups_count=$(ls -1 "${BACKUP_DIR}/${repo_name}" | wc -l)
+    if [ "$backups_count" -gt 6 ]; then
+        local backups_to_delete=$((backups_count - 6))
+        ls -1t "${BACKUP_DIR}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} sudo rm -rf "${BACKUP_DIR}/${repo_name}/{}"
+        echo "Deleted $backups_to_delete old backups." >> "$LOG_GIT_FILE"
+    fi
+}
+
+COMMIT_COUNT=0
 
 add_commit() {
     local event="$1"
@@ -206,51 +257,39 @@ add_commit() {
         return 0
     fi
     
-    echo "Adding $file to git"
     
     git -C "$WATCH_DIR" add "$file" > /dev/null || true
     git -C "$WATCH_DIR" commit -m "$event $file" > /dev/null || true
-}
-
-# Function to back up .git directories to /backup_dir
-backup_git_directories() {
-    local backup_base_dir="/tmp/windex"
-    local timestamp
-    timestamp=$(date '+%Y-%m-%d_%I-%M-%S')
-    local repo_name=$BASENAME
-    local backup_dir="${backup_base_dir}/${repo_name}/${timestamp}"
-    local target_dir
-    target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
     
-    mkdir -p "$backup_dir"
-    cp -r "$target_dir/.git" $backup_dir
-    echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
+    echo "logged $event $file to git" >> "$LOG_GIT_FILE"
     
-    # Remove old backups if more than 6 exist
-    local backups_count
-    backups_count=$(ls -1 "${backup_base_dir}/${repo_name}" | wc -l)
-    if [ "$backups_count" -gt 6 ]; then
-        local backups_to_delete=$((backups_count - 6))
-        ls -1t "${backup_base_dir}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} rm -rf "${backup_base_dir}/${repo_name}/{}"
-        echo "Deleted $backups_to_delete old backups." >> "$LOG_GIT_FILE"
+    # Backup git directories every 10 commits
+    
+    COMMIT_COUNT=$((COMMIT_COUNT + 1))
+    if [ "$COMMIT_COUNT" -gt 10 ]; then
+        backup_git_directories
+        COMMIT_COUNT=0
     fi
     
 }
+
+
 
 # Function to log changes
 log_change() {
     local event="$1"
     local file="$2"
     
-    echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file"
     
     if [[ "$file" == *.swp ]] || [[ "$file" == *.swpx ]] || [[ "$file" == *~ ]] || [[ "$file" == *.lock ]] || [[ "$file" == *.git/* ]] || [[ "$file" == /proc/ ]] || [[ "$file" == /run/ ]]; then
         return 0
     fi
     
+    
     if [[ "$event" = "ACCESS" ]] || [[ "$event" = "ACCESS,ISDIR" ]]; then
         echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_ACCESS_LOG_FILE"
     else
+        echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file"
         echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_FILE"
     fi
     
@@ -264,18 +303,24 @@ log_change() {
 }
 
 
-# Start watching the directory and subdirectories
-inotifywait -m -r -e access,modify,create,delete,move "$WATCH_DIR" --format '%e %w%f' | while read -r event file; do
-    log_change "$event" "$file"
-done &
-
-# Periodically back up .git directories every 10 minutes
-while true; do
-    backup_git_directories
-    sleep $BACKUP_DELAY  # 600 seconds = 10 minutes
-done &
-
 echo "Watching directory $WATCH_DIR"
 echo "Logs are stored in $LOG_FILE"
 echo "Git logs are stored in $LOG_GIT_FILE"
 echo "Access logs are stored in $LOG_ACCESS_LOG_FILE"
+echo "Backup gits are stored in $BACKUP_DIR/$BASENAME"
+echo "Backup of init gits are stored in $BACKUP_DIR/${BASENAME}_init"
+
+echo "Backing up every $BACKUP_DELAY seconds"
+echo ""
+
+trap 'echo "Cleaning up...";kill $(jobs -p); exit' SIGINT SIGTERM
+
+inotifywait -m -r -e access,modify,create,delete,move "$WATCH_DIR" --format '%e %w%f' | while read -r event file; do
+    log_change "$event" "$file"
+done &
+
+# Periodically back up .git directories every $BACKUP_DELAY seconds
+while true; do
+    backup_git_directories
+    sleep $BACKUP_DELAY
+done
