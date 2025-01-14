@@ -3,6 +3,13 @@
 command_exists() {
     command -v "$1" &> /dev/null
 }
+sudoCommand(){
+    if command_exists sudo; then
+        sudo "$@"
+    else
+        "$@"
+    fi
+}
 get_path(){
     if command_exists realpath; then
         realpath "$1"
@@ -46,28 +53,28 @@ fi
 # Check and install a pkg if not present
 install_pkg() {
     if command_exists apt-get; then
-        sudo apt-get update
-        sudo apt-get install -y $1
+        sudoCommand apt-get update
+        sudoCommand apt-get install -y $1
         elif command_exists dnf; then
-        sudo dnf install -y $1
+        sudoCommand dnf install -y $1
         elif command_exists yum; then
-        sudo yum install -y $1
+        sudoCommand yum install -y $1
         elif command_exists zypper; then
-        sudo zypper install -y $1
+        sudoCommand zypper install -y $1
         elif command_exists pacman; then
-        sudo pacman -S --noconfirm $1
+        sudoCommand pacman -S --noconfirm $1
         elif command_exists apk; then
-        sudo apk add $1
+        sudoCommand apk add $1
         elif command_exists brew; then
         brew install $1
         elif command_exists pkg; then
-        sudo pkg install -y $1
+        sudoCommand pkg install -y $1
         elif command_exists emerge; then
-        sudo emerge -av $1
+        sudoCommand emerge -av $1
         elif command_exists xbps-install; then
-        sudo xbps-install -S $1
+        sudoCommand xbps-install -S $1
         elif command_exists eopkg; then
-        sudo eopkg install -y $1
+        sudoCommand eopkg install -y $1
         elif command_exists guix; then
         guix package -i $1
         elif command_exists nix-env; then
@@ -80,38 +87,38 @@ install_pkg() {
 
 restart_service() {
     if command_exists systemctl; then
-        sudo systemctl restart $1
+        sudoCommand systemctl restart $1
         elif command_exists service; then
-        sudo service $1 restart
+        sudoCommand service $1 restart
         elif command_exists initctl; then
-        sudo initctl restart $1
+        sudoCommand initctl restart $1
         elif command_exists rc-service; then
-        sudo rc-service $1 restart
+        sudoCommand rc-service $1 restart
         elif command_exists sv; then
-        sudo sv restart $1
+        sudoCommand sv restart $1
         elif command_exists openrc-service; then
-        sudo openrc-service $1 restart
+        sudoCommand openrc-service $1 restart
         elif command_exists launchctl; then
-        sudo launchctl stop $1
-        sudo launchctl start $1
+        sudoCommand launchctl stop $1
+        sudoCommand launchctl start $1
         elif command_exists rcctl; then
-        sudo rcctl restart $1
+        sudoCommand rcctl restart $1
         elif command_exists s6-svc; then
-        sudo s6-svc -r /run/s6/services/$1
+        sudoCommand s6-svc -r /run/s6/services/$1
         elif command_exists supervisorctl; then
-        sudo supervisorctl restart $1
+        sudoCommand supervisorctl restart $1
         elif command_exists sv; then
-        sudo sv restart $1
+        sudoCommand sv restart $1
         elif command_exists runit; then
-        sudo sv restart $1
+        sudoCommand sv restart $1
         elif command_exists daemontools; then
-        sudo svc -t /service/$1
+        sudoCommand svc -t /service/$1
         elif command_exists sysv-rc-conf; then
-        sudo sysv-rc-conf $1 restart
+        sudoCommand sysv-rc-conf $1 restart
         elif command_exists update-rc.d; then
-        sudo update-rc.d $1 defaults
+        sudoCommand update-rc.d $1 defaults
         elif command_exists chkconfig; then
-        sudo chkconfig $1 on
+        sudoCommand chkconfig $1 on
     else
         echo "Service manager not supported. Please restart $1 manually."
     fi
@@ -155,7 +162,7 @@ copy_initial_git_repo(){
     target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
     
     mkdir -p "$backup_dir"
-    sudo cp -r "$target_dir/.git" $backup_dir
+    sudoCommand cp -r "$target_dir/.git" $backup_dir
     echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
 }
 
@@ -180,8 +187,8 @@ initialize_git_repo() {
 initialize_auditd() {
     echo "Initializing auditd"
     
-    if ! sudo auditctl -w "$WATCH_DIR" -p war -k "$AUDITDKEY"; then
-        sudo auditctl -a always,exit -F dir="$WATCH_DIR" -F perm=war -k "$AUDITDKEY"
+    if ! sudoCommand auditctl -w "$WATCH_DIR" -p war -k "$AUDITDKEY"; then
+        sudoCommand auditctl -a always,exit -F dir="$WATCH_DIR" -F perm=war -k "$AUDITDKEY"
     fi
     
     echo "Initialized auditd"
@@ -234,7 +241,7 @@ backup_git_directories() {
     target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
     
     mkdir -p "$backup_dir"
-    sudo cp -r "$target_dir/.git" $backup_dir
+    sudoCommand cp -r "$target_dir/.git" $backup_dir
     echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
     
     # Remove old backups if more than 6 exist
@@ -242,29 +249,33 @@ backup_git_directories() {
     backups_count=$(ls -1 "${BACKUP_DIR}/${repo_name}" | wc -l)
     if [ "$backups_count" -gt 6 ]; then
         local backups_to_delete=$((backups_count - 6))
-        ls -1t "${BACKUP_DIR}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} sudo rm -rf "${BACKUP_DIR}/${repo_name}/{}"
+        # Might not delete if no sudo command exits in the system
+        if ! command_exists sudo; then
+            ls -1t "${BACKUP_DIR}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} rm -rf "${BACKUP_DIR}/${repo_name}/{}"
+            
+        else
+            ls -1t "${BACKUP_DIR}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} sudo rm -rf "${BACKUP_DIR}/${repo_name}/{}"
+        fi
+        
         echo "Deleted $backups_to_delete old backups." >> "$LOG_GIT_FILE"
     fi
 }
 
 COMMIT_COUNT=0
 
+
 add_commit() {
     local event="$1"
     local file="$2"
     
-    if [[ "$event" = "ACCESS" ]] ||  [[ "$event" = "ACCESS,ISDIR" ]]; then
-        return 0
+    
+    git -C "$WATCH_DIR" add "$file" > /dev/null ||  git -C "$WATCH_DIR" add "*" > /dev/null || true
+    
+    if git -C "$WATCH_DIR" commit -m "$event $file" > /dev/null; then
+        echo "$(date '+%I:%M:%S %Y-%m-%d') INFO: committed $event $file to git" >> "$LOG_GIT_FILE"
     fi
     
-    
-    git -C "$WATCH_DIR" add "$file" > /dev/null || true
-    git -C "$WATCH_DIR" commit -m "$event $file" > /dev/null || true
-    
-    echo "logged $event $file to git" >> "$LOG_GIT_FILE"
-    
     # Backup git directories every 10 commits
-    
     COMMIT_COUNT=$((COMMIT_COUNT + 1))
     if [ "$COMMIT_COUNT" -gt 10 ]; then
         backup_git_directories
@@ -280,6 +291,10 @@ log_change() {
     local event="$1"
     local file="$2"
     
+    if [ ! -d "$WATCH_DIR/.git" ]; then
+        initialize_git_repo
+        initialize_auditd
+    fi
     
     if [[ "$file" == *.swp ]] || [[ "$file" == *.swpx ]] || [[ "$file" == *~ ]] || [[ "$file" == *.lock ]] || [[ "$file" == *.git/* ]] || [[ "$file" == /proc/ ]] || [[ "$file" == /run/ ]]; then
         return 0
@@ -288,18 +303,23 @@ log_change() {
     
     if [[ "$event" = "ACCESS" ]] || [[ "$event" = "ACCESS,ISDIR" ]]; then
         echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_ACCESS_LOG_FILE"
+        return 0
     else
         echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file"
         echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_FILE"
     fi
     
-    if [ ! -d "$WATCH_DIR/.git" ]; then
-        initialize_git_repo
-        initialize_auditd
+    
+    
+    # if file is just created and deleted to quickly it might not exist for git to commit
+    # this happens when a binary is dropped changed and deleted quickly to order to avoid detection
+    if ! [ -f "$file" ] || ! [ -d "$file" ] ; then
+        echo "$(date '+%I:%M:%S %Y-%m-%d') - WARNING: File doesn't exist, $file - might be a dropped executable" >> "$LOG_FILE"
+        echo "$(date '+%I:%M:%S %Y-%m-%d') - WARNING: File doesn't exist, $file - might be a dropped executable"
+        return 0
     fi
     
-    
-    add_commit $event $file
+    add_commit "$event" "$file"
 }
 
 
