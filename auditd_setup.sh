@@ -13,13 +13,13 @@ command_exists() {
 detect_os() {
     if command_exists apt; then
         echo "apt"
-    elif command_exists yum; then
+        elif command_exists yum; then
         echo "yum"
-    elif command_exists dnf; then
+        elif command_exists dnf; then
         echo "dnf"
-    elif command_exists zypper; then
+        elif command_exists zypper; then
         echo "zypper"
-    elif command_exists pacman; then
+        elif command_exists pacman; then
         echo "pacman"
     else
         echo "unsupported"
@@ -30,21 +30,21 @@ detect_os() {
 install_auditd() {
     local package_manager=$1
     case $package_manager in
-    apt)
-        sudo apt update && sudo apt install -y auditd audispd-plugins
+        apt)
+            sudo apt update && sudo apt install -y auditd audispd-plugins
         ;;
-    yum|dnf)
-        sudo $package_manager install -y audit
+        yum|dnf)
+            sudo $package_manager install -y audit
         ;;
-    zypper)
-        sudo zypper install -y audit
+        zypper)
+            sudo zypper install -y audit
         ;;
-    pacman)
-        sudo pacman -Sy --noconfirm audit
+        pacman)
+            sudo pacman -Sy --noconfirm audit
         ;;
-    *)
-        echo "Unsupported package manager. Exiting."
-        exit 1
+        *)
+            echo "Unsupported package manager. Exiting."
+            exit 1
         ;;
     esac
 }
@@ -56,13 +56,13 @@ configure_auditd() {
     echo "-a always,exit -F arch=b32 -S execve -k commands" | sudo tee -a "$AUDIT_RULES_FILE" >/dev/null
     echo "-a exit,always -F arch=b64 -F euid=0 -S execve -k  commands" | sudo tee -a "$AUDIT_RULES_FILE" >/dev/null
     echo "-a exit,always -F arch=b32 -F euid=0 -S execve -k  commands" | sudo tee -a "$AUDIT_RULES_FILE" >/dev/null
-
+    
     # Restart auditd to apply the new rules
     sudo systemctl restart auditd
-
+    
     # Ensure auditd starts on boot
     sudo systemctl enable auditd
-
+    
     echo "Auditd has been configured to monitor executed commands."
     echo "Logs can be found at: $LOG_FILE"
 }
