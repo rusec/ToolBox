@@ -110,7 +110,7 @@ foreach ($Right in $UserRights.Keys) {
         Set-GPUserRight -Name $GPOName -PolicyName $Right -Users $Accounts
         Write-Host "Configured user right: $Right."
     } catch {
-        Write-Warning "Error configuring user right $Right: $_"
+        Write-Warning "Error configuring user right"
     }
 }
 
@@ -123,7 +123,7 @@ try {
     New-GPLink -Name $GPOName -Target $OU -Enforced $true
     Write-Host "GPO linked to $OU successfully."
 } catch {
-    Write-Warning "Error linking GPO to $OU: $_"
+    Write-Warning "Error linking GPO"
 }
 
 # Generate and display GPO report
