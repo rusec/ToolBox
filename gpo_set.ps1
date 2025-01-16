@@ -2,21 +2,15 @@
 Import-Module GroupPolicy
 
 # Define variables
-$DomainName = (Get-ADDomain).DNSRoot
 $GPOName = "Default Domain Policy"
 $GPODescription = "Configured via PowerShell."
 
 # Enable verbose logging for debugging
 $VerbosePreference = "Continue"
 
-# Create or retrieve the GPO
-$GPO = Get-GPO -Name $GPOName -ErrorAction SilentlyContinue
-if (-not $GPO) {
-    $GPO = New-GPO -Name $GPOName -Domain $DomainName -Comment $GPODescription
-    Write-Host "GPO '$GPOName' created."
-} else {
-    Write-Host "Using existing GPO '$GPOName'."
-}
+# Retrieve the Default Domain Policy
+$GPO = Get-GPO -Name $GPOName -ErrorAction Stop
+Write-Host "Using Default Domain Policy."
 
 # Registry-based settings
 $RegistrySettings = @(
@@ -33,55 +27,31 @@ foreach ($Setting in $RegistrySettings) {
     }
 }
 
-# Password policies (modify Default Domain Policy if needed)
-$PasswordPolicies = @(
-    @{ Key = "EnforcePasswordHistory"; Value = 0 },
-    @{ Key = "MaxPasswordAge"; Value = 7 },
-    @{ Key = "MinPasswordAge"; Value = 1 },
-    @{ Key = "MinPasswordLength"; Value = 25 },
-    @{ Key = "PasswordComplexity"; Value = 1 },
-    @{ Key = "ClearTextPassword"; Value = 0 }
-)
-foreach ($Policy in $PasswordPolicies) {
-    try {
-        Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName $Policy.Key -Type DWord -Value $Policy.Value
-        Write-Host "Configured password policy: $($Policy.Key)."
-    } catch {
-        Write-Warning "Error configuring password policy $($Policy.Key): $_"
-    }
-}
+# Security settings (password, account lockout, Kerberos policies)
+$SecTemplate = @"
+[System Access]
+MinimumPasswordAge = 1
+MaximumPasswordAge = 7
+MinimumPasswordLength = 25
+PasswordComplexity = 1
+PasswordHistorySize = 0
+LockoutBadCount = 5
+ResetLockoutCount = 10
+LockoutDuration = 10
 
-# Account lockout policies
-$AccountLockoutPolicies = @(
-    @{ Key = "LockoutDuration"; Value = 10 },
-    @{ Key = "LockoutThreshold"; Value = 5 },
-    @{ Key = "ResetLockoutCount"; Value = 10 }
-)
-foreach ($Policy in $AccountLockoutPolicies) {
-    try {
-        Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName $Policy.Key -Type DWord -Value $Policy.Value
-        Write-Host "Configured account lockout policy: $($Policy.Key)."
-    } catch {
-        Write-Warning "Error configuring account lockout policy $($Policy.Key): $_"
-    }
-}
+[Kerberos Policy]
+MaxTicketAge = 1
+MaxRenewAge = 7
+MaxServiceAge = 600
+MaxClockSkew = 5
+ForceLogoffWhenHourExpire = 1
+"@
 
-# Kerberos policies
-$KerberosPolicies = @(
-    @{ Key = "EnforceUserLogonRestrictions"; Value = 1 },
-    @{ Key = "MaxLifetimeServiceTicket"; Value = 60 },
-    @{ Key = "MaxLifetimeUserTicket"; Value = 60 },
-    @{ Key = "MaxLifetimeUserTicketRenewal"; Value = 1000 },
-    @{ Key = "MaxClockSyncTolerance"; Value = 5 }
-)
-foreach ($Policy in $KerberosPolicies) {
-    try {
-        Set-GPRegistryValue -Name $GPOName -Key "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -ValueName $Policy.Key -Type DWord -Value $Policy.Value
-        Write-Host "Configured Kerberos policy: $($Policy.Key)."
-    } catch {
-        Write-Warning "Error configuring Kerberos policy $($Policy.Key): $_"
-    }
-}
+$SecTemplatePath = "$env:TEMP\SecurityTemplate.inf"
+$SecTemplate | Out-File -FilePath $SecTemplatePath -Encoding ASCII
+secedit /configure /db secedit.sdb /cfg $SecTemplatePath /quiet
+
+Write-Host "Security settings applied."
 
 # Configure audit policies
 $AuditCategories = @(
@@ -114,19 +84,10 @@ foreach ($Right in $UserRights.Keys) {
     }
 }
 
-# Link the GPO to an OU
-$OU = "OU=Domain Controllers,DC=RUSEC,DC=org"
-try {
-    if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$OU'")) {
-        throw "OU not found: $OU"
-    }
-    New-GPLink -Name $GPOName -Target $OU -Enforced $true
-    Write-Host "GPO linked to $OU successfully."
-} catch {
-    Write-Warning "Error linking GPO"
-}
-
 # Generate and display GPO report
 $ReportPath = "$env:TEMP\$GPOName.html"
 Get-GPOReport -Name $GPOName -ReportType HTML -Path $ReportPath
 Write-Host "GPO Report generated: $ReportPath"
+
+# Force a GPUpdate
+Invoke-GPUpdate -Force -RandomDelayInMinutes 0
