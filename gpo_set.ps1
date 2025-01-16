@@ -94,7 +94,7 @@ foreach ($Category in $AuditCategories) {
         Set-GPAuditPolicy -Name $GPOName -AuditCategory $Category -Success $true -Failure $true
         Write-Host "Configured audit policy for category: $Category."
     } catch {
-        Write-Warning "Error configuring audit policy for $Category: $_"
+        Write-Warning "Error configuring audit policy for $Category"
     }
 }
 
