@@ -3,7 +3,7 @@ Import-Module GroupPolicy
 
 # Define variables
 $DomainName = (Get-ADDomain).DNSRoot
-$GPOName = "Custom Group Policy Settings"
+$GPOName = "Default Domain Policy"
 $GPODescription = "Configured via PowerShell."
 
 # Enable verbose logging for debugging
