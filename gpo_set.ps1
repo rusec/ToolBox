@@ -31,7 +31,14 @@ foreach ($Setting in $RegistrySettings) {
 $Domain = "RUSEC.org"
 
 # password policy settings
-Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MinPasswordLength 25  -LockoutDuration 00:10:00 -LockoutObservationWindow 00:20:00 -ComplexityEnabled $true -ReversibleEncryptionEnabled $false -MinPasswordAge 1.00:00:00 -MaxPasswordAge 7.00:00:00 -PasswordHistoryCount 0
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MinPasswordLength 25  
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -LockoutDuration 00:10:00 
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -LockoutObservationWindow 00:20:00 
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -ComplexityEnabled $true 
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -ReversibleEncryptionEnabled $false 
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MinPasswordAge 1.00:00:00 
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MaxPasswordAge 7.00:00:00 
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -PasswordHistoryCount 0
 Write-Host "Password policies applied."
 
 # Configure audit policies
