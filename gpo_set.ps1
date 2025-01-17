@@ -37,9 +37,10 @@ Set-ADDefaultDomainPasswordPolicy -Identity $Domain
         -MinPasswordLength 25
         -PasswordComplexity 1
         -PasswordHistorySize 0
-        -LockoutThreshold 5
-        -LockoutObservationWindow (New-TimeSpan -Minutes 10) 
-        -LockoutDuration (New-TimeSpan -Minutes 10)
+
+        #  -LockoutThreshold 5
+        # -LockoutObservationWindow (New-TimeSpan -Minutes 10) 
+        # -LockoutDuration (New-TimeSpan -Minutes 10)
 
 
 
