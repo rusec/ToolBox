@@ -31,12 +31,7 @@ foreach ($Setting in $RegistrySettings) {
 $Domain = "RUSEC.org"
 
 # password policy settings
-Set-ADDefaultDomainPasswordPolicy -Identity $Domain 
-        -MinPasswordAge 1
-        -MaxPasswordAge 7
-        -MinPasswordLength 25
-        -PasswordComplexity 1
-        -PasswordHistorySize 0
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MinPasswordLength 25 -PasswordHistorySize 0
 
         #  -LockoutThreshold 5
         # -LockoutObservationWindow (New-TimeSpan -Minutes 10) 
