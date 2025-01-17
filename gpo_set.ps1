@@ -31,24 +31,8 @@ foreach ($Setting in $RegistrySettings) {
 $Domain = "RUSEC.org"
 
 # password policy settings
-Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MinPasswordLength 25 -PasswordHistorySize 0
-
-        #  -LockoutThreshold 5
-        # -LockoutObservationWindow (New-TimeSpan -Minutes 10) 
-        # -LockoutDuration (New-TimeSpan -Minutes 10)
-
-
-
-# Kerberos policy settings
-Set-ADDefaultDomainPolicy -Identity $Domain `
-        -MaxTicketAge (New-TimeSpan -Days 1) `
-        -MaxRenewAge (New-TimeSpan -Days 7) `
-        -MaxServiceAge (New-TimeSpan -Minutes 600) `
-        -MaxClockSkew (New-TimeSpan -Minutes 5) `
-        -ForceLogoffWhenHourExpire $true
-
-
-Write-Host "Password and Kerberos policies applied."
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MinPasswordLength 25  -LockoutDuration 00:10:00 -LockoutObservationWindow 00:20:00 -ComplexityEnabled $true -ReversibleEncryptionEnabled $false -MinPasswordAge 1.00:00:00 -MaxPasswordAge 7.00:00:00 -PasswordHistoryCount 0
+Write-Host "Password policies applied."
 
 # Configure audit policies
 $AuditCategories = @(
