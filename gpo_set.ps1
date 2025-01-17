@@ -27,43 +27,30 @@ foreach ($Setting in $RegistrySettings) {
     }
 }
 
-# Security settings (password, account lockout, Kerberos policies)
 # Define the domain name
 $Domain = "RUSEC.org"
 
-# Define password policy settings
-$PasswordPolicy = @{
-    MinPasswordAge        = 1
-    ComplexityEnabled     = 1
-    LockoutThreshold      = 5
-    MaxPasswordAge        = 7
-    MinPasswordLength     = 25
-    PasswordComplexity    = 1
-    PasswordHistorySize   = 0
-    ResetLockoutCount     = 10
-    LockoutDuration       = 10
-}
+# password policy settings
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain 
+        -MinPasswordAge 1 
+        -MaxPasswordAge 7 
+        -MinPasswordLength 25 
+        -PasswordComplexity 1 
+        -PasswordHistorySize 0 
+        -LockoutThreshold 5 
+        -LockoutObservationWindow (New-TimeSpan -Minutes 10) 
+        -LockoutDuration (New-TimeSpan -Minutes 10)
 
-# Define Kerberos policy settings
-$KerberosPolicy = @{
-    MaxTicketAge          = 1
-    MaxRenewAge           = 7
-    MaxServiceAge         = 600
-    MaxClockSkew          = 5
-    ForceLogoffWhenHourExpire = 1
-}
 
-# Apply the domain password policy
-foreach ($Setting in $PasswordPolicy.GetEnumerator()) {
-    Write-Host "Setting password policy: $($Setting.Key) = $($Setting.Value)"
-    Set-ADDefaultDomainPasswordPolicy -Identity $Domain -$($Setting.Key) $($Setting.Value)
-}
 
-# Apply the Kerberos policy
-foreach ($Setting in $KerberosPolicy.GetEnumerator()) {
-    Write-Host "Setting Kerberos policy: $($Setting.Key) = $($Setting.Value)"
-    Set-ADDefaultDomainPolicy -Identity $Domain -$($Setting.Key) $($Setting.Value)
-}
+# Kerberos policy settings
+Set-ADDefaultDomainPolicy -Identity $Domain `
+        -MaxTicketAge (New-TimeSpan -Days 1) `
+        -MaxRenewAge (New-TimeSpan -Days 7) `
+        -MaxServiceAge (New-TimeSpan -Minutes 600) `
+        -MaxClockSkew (New-TimeSpan -Minutes 5) `
+        -ForceLogoffWhenHourExpire $true
+
 
 Write-Host "Password and Kerberos policies applied."
 
