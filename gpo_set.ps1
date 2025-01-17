@@ -28,30 +28,43 @@ foreach ($Setting in $RegistrySettings) {
 }
 
 # Security settings (password, account lockout, Kerberos policies)
-$SecTemplate = @"
-[System Access]
-MinimumPasswordAge = 1
-MaximumPasswordAge = 7
-MinimumPasswordLength = 25
-PasswordComplexity = 1
-PasswordHistorySize = 0
-LockoutBadCount = 5
-ResetLockoutCount = 10
-LockoutDuration = 10
+# Define the domain name
+$Domain = "RUSEC.org"
 
-[Kerberos Policy]
-MaxTicketAge = 1
-MaxRenewAge = 7
-MaxServiceAge = 600
-MaxClockSkew = 5
-ForceLogoffWhenHourExpire = 1
-"@
+# Define password policy settings
+$PasswordPolicy = @{
+    MinimumPasswordAge    = 1
+    MaximumPasswordAge    = 7
+    MinimumPasswordLength = 25
+    PasswordComplexity    = 1
+    PasswordHistorySize   = 0
+    LockoutBadCount       = 5
+    ResetLockoutCount     = 10
+    LockoutDuration       = 10
+}
 
-$SecTemplatePath = "$env:TEMP\SecurityTemplate.inf"
-$SecTemplate | Out-File -FilePath $SecTemplatePath -Encoding ASCII
-secedit /configure /db secedit.sdb /cfg $SecTemplatePath /quiet
+# Define Kerberos policy settings
+$KerberosPolicy = @{
+    MaxTicketAge          = 1
+    MaxRenewAge           = 7
+    MaxServiceAge         = 600
+    MaxClockSkew          = 5
+    ForceLogoffWhenHourExpire = 1
+}
 
-Write-Host "Security settings applied."
+# Apply the domain password policy
+foreach ($Setting in $PasswordPolicy.GetEnumerator()) {
+    Write-Host "Setting password policy: $($Setting.Key) = $($Setting.Value)"
+    Set-ADDefaultDomainPasswordPolicy -Identity $Domain -$($Setting.Key) $($Setting.Value)
+}
+
+# Apply the Kerberos policy
+foreach ($Setting in $KerberosPolicy.GetEnumerator()) {
+    Write-Host "Setting Kerberos policy: $($Setting.Key) = $($Setting.Value)"
+    Set-ADDefaultDomainPolicy -Identity $Domain -$($Setting.Key) $($Setting.Value)
+}
+
+Write-Host "Password and Kerberos policies applied."
 
 # Configure audit policies
 $AuditCategories = @(
@@ -59,30 +72,38 @@ $AuditCategories = @(
     "Logon Events", "Object Access", "Policy Change",
     "Privilege Use", "Process Tracking", "System Events"
 )
+
+Write-Host "Configuring audit policies..."
 foreach ($Category in $AuditCategories) {
     try {
+        # Set audit policy for the category
         Set-GPAuditPolicy -Name $GPOName -AuditCategory $Category -Success $true -Failure $true
         Write-Host "Configured audit policy for category: $Category."
     } catch {
-        Write-Warning "Error configuring audit policy for $Category"
+        Write-Warning "Error configuring audit policy for category: $Category"
     }
 }
 
 # Configure user rights assignments
 $UserRights = @{
-    "Access this computer from the network" = @("Administrators", "Authenticated Users")
-    "Allow log on locally" = @("Administrators", "Backup Operators")
+    "Access this computer from the network"        = @("Administrators", "Authenticated Users")
+    "Allow log on locally"                         = @("Administrators", "Backup Operators")
     "Allow log on through Remote Desktop Services" = @("Administrators")
 }
+
+Write-Host "Configuring user rights assignments..."
 foreach ($Right in $UserRights.Keys) {
     $Accounts = $UserRights[$Right]
     try {
+        # Set user rights assignment
         Set-GPUserRight -Name $GPOName -PolicyName $Right -Users $Accounts
-        Write-Host "Configured user right: $Right."
+        Write-Host "Configured user right: $Right for accounts: $($Accounts -join ', ')."
     } catch {
-        Write-Warning "Error configuring user right"
+        Write-Warning "Error configuring user right: $Right"
     }
 }
+
+Write-Host "Audit policies and user rights assignments configured"
 
 # Generate and display GPO report
 $ReportPath = "$env:TEMP\$GPOName.html"
