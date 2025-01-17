@@ -33,12 +33,13 @@ $Domain = "RUSEC.org"
 
 # Define password policy settings
 $PasswordPolicy = @{
-    MinimumPasswordAge    = 1
-    MaximumPasswordAge    = 7
-    MinimumPasswordLength = 25
+    MinPasswordAge        = 1
+    ComplexityEnabled     = 1
+    LockoutThreshold      = 5
+    MaxPasswordAge        = 7
+    MinPasswordLength     = 25
     PasswordComplexity    = 1
     PasswordHistorySize   = 0
-    LockoutBadCount       = 5
     ResetLockoutCount     = 10
     LockoutDuration       = 10
 }
