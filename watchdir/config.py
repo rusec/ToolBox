@@ -1,15 +1,29 @@
-import until
+from util import exit_with_error, log
 from sys import argv
+import os
+import hashlib
+import shutil
 # Constants
 AUDITDKEY="watchdir-script"
 BACKUP_DIR="/tmp/windex"
 DEBUG = os.getenv("DEBUG", False) == "True"
-WATCH_DIR = argv[1] or until.exit_with_error("Please provide a directory to watch")
-LOG_DIR = os.getenv("LOG_DIR", "/var/log/watchdir")
-LOG_FILE = os.getenv("LOG_FILE", "/var/log/watchdir/watchdir.log")
 
-if not os.path.isdir(os.path.dirname(LOG_FILE)):
-    os.makedirs(os.path.dirname(LOG_FILE))
+if len(argv) < 2:
+    exit_with_error("Please provide a directory to watch")
+
+WATCH_DIR = os.path.abspath(argv[1])
+BASE_DIR = os.path.basename(WATCH_DIR)
+BASE_NAME =BASE_DIR + "_" +hashlib.md5(BASE_DIR.encode()).hexdigest()
+LOG_DIR = os.getenv("LOG_DIR", "/var/log/watchdir")
+WATCH_DIR_LOG_FILE = os.getenv("LOG_FILE", "/var/log/watchdir/{}.log".format(BASE_NAME))
+WATCH_ACCESS_LOG_FILE = os.getenv("ACCESS_LOG_FILE", "/var/log/watchdir/{}.access.log".format(BASE_NAME))
+WATCH_GIT_LOG_FILE = os.getenv("GIT_LOG_FILE", "/var/log/watchdir/{}.git.log".format(BASE_NAME))
+
+if os.getuid() != 0:
+    exit_with_error("Please run this script as sudo")
+
+if not os.path.isdir(LOG_DIR):
+    os.makedirs(LOG_DIR)
 
 
 # Check if directory exists
@@ -30,3 +44,36 @@ else:
 
 if not os.path.isdir(BACKUP_DIR):
     os.makedirs(BACKUP_DIR)
+
+
+def print_config():
+
+    log("WATCH_DIR: {}".format(WATCH_DIR))
+    log("BASE_DIR: {}".format(BASE_DIR))
+    log("BASE_NAME: {}".format(BASE_NAME))
+    log("LOG_DIR: {}".format(LOG_DIR))
+    log("WATCH_DIR_LOG_FILE: {}".format(WATCH_DIR_LOG_FILE))
+    log("WATCH_ACCESS_LOG_FILE: {}".format(WATCH_ACCESS_LOG_FILE))
+    log("WATCH_GIT_LOG_FILE: {}".format(WATCH_GIT_LOG_FILE))
+    log("DEBUG: {}".format(DEBUG))
+    log("BACKUP_DIR: {}".format(BACKUP_DIR))
+    log("BACKUP_INTERVAL: {}".format(BACKUP_INTERVAL))
+
+
+def clean_up():
+
+    log("Cleaning up")
+    if os.path.isdir(BACKUP_DIR):
+        shutil.rmtree(BACKUP_DIR)
+        log("Backup directory deleted")
+    else:
+        log("Backup directory does not exist")
+
+    if os.path.isdir(LOG_DIR):
+        shutil.rmtree(LOG_DIR)
+        log("Log directory deleted")
+    else:
+        log("Log directory does not exist")
+
+    log("Exiting")
+    exit(0)

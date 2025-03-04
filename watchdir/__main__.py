@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import watchdir
+import main
 import os
 
 if os.getuid() != 0:
@@ -8,4 +8,4 @@ if os.getuid() != 0:
 
 print()
 
-watchdir.main()
+main.main()

@@ -10,6 +10,7 @@ sudoCommand(){
         "$@"
     fi
 }
+
 get_path(){
     if command_exists realpath; then
         realpath "$1"
@@ -130,7 +131,7 @@ echo "Checking dependencies..."
 if ! command_exists inotifywait; then
     echo "inotify-tools is not installed. Installing..."
     install_pkg "inotify-tools"
-    
+
 fi
 
 if ! command_exists git; then
@@ -149,7 +150,7 @@ fi
 exit_with_error() {
     echo "Error: $1"
     echo "Error: $1" >> "$LOG_FILE"
-    
+
     exit 1
 }
 
@@ -160,7 +161,7 @@ copy_initial_git_repo(){
     local backup_dir="${BACKUP_DIR}/${repo_name}_init/${timestamp}"
     local target_dir
     target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
-    
+
     mkdir -p "$backup_dir"
     sudoCommand cp -r "$target_dir/.git" $backup_dir
     echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
@@ -179,22 +180,22 @@ initialize_git_repo() {
     git commit -m "Initial commit" || true
     cd - > /dev/null || exit_with_error "Could not change to previous directory"
     echo "Initializing git repo in dir"
-    
+
     copy_initial_git_repo
 }
 
 
 initialize_auditd() {
     echo "Initializing auditd"
-    
+
     if ! sudoCommand auditctl -w "$WATCH_DIR" -p war -k "$AUDITDKEY"; then
         sudoCommand auditctl -a always,exit -F dir="$WATCH_DIR" -F perm=war -k "$AUDITDKEY"
     fi
-    
+
     echo "Initialized auditd"
-    
+
     restart_service auditd
-    
+
     echo "Restarted auditd"
 }
 
@@ -239,11 +240,11 @@ backup_git_directories() {
     local backup_dir="${BACKUP_DIR}/${repo_name}/${timestamp}"
     local target_dir
     target_dir=$(echo "$WATCH_DIR" | sed 's:/*$::')
-    
+
     mkdir -p "$backup_dir"
     sudoCommand cp -r "$target_dir/.git" $backup_dir
     echo "Backed up $target_dir/.git to $backup_dir" >> $LOG_GIT_FILE
-    
+
     # Remove old backups if more than 6 exist
     local backups_count
     backups_count=$(ls -1 "${BACKUP_DIR}/${repo_name}" | wc -l)
@@ -252,11 +253,11 @@ backup_git_directories() {
         # Might not delete if no sudo command exits in the system
         if ! command_exists sudo; then
             ls -1t "${BACKUP_DIR}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} rm -rf "${BACKUP_DIR}/${repo_name}/{}"
-            
+
         else
             ls -1t "${BACKUP_DIR}/${repo_name}" | tail -n "$backups_to_delete" | xargs -I {} sudo rm -rf "${BACKUP_DIR}/${repo_name}/{}"
         fi
-        
+
         echo "Deleted $backups_to_delete old backups." >> "$LOG_GIT_FILE"
     fi
 }
@@ -267,21 +268,21 @@ COMMIT_COUNT=0
 add_commit() {
     local event="$1"
     local file="$2"
-    
-    
+
+
     git -C "$WATCH_DIR" add "$file" > /dev/null ||  git -C "$WATCH_DIR" add "*" > /dev/null || true
-    
+
     if git -C "$WATCH_DIR" commit -m "$event $file" > /dev/null; then
         echo "$(date '+%I:%M:%S %Y-%m-%d') INFO: committed $event $file to git" >> "$LOG_GIT_FILE"
     fi
-    
+
     # Backup git directories every 10 commits
     COMMIT_COUNT=$((COMMIT_COUNT + 1))
     if [ "$COMMIT_COUNT" -gt 10 ]; then
         backup_git_directories
         COMMIT_COUNT=0
     fi
-    
+
 }
 
 
@@ -290,17 +291,17 @@ add_commit() {
 log_change() {
     local event="$1"
     local file="$2"
-    
+
     if [ ! -d "$WATCH_DIR/.git" ]; then
         initialize_git_repo
         initialize_auditd
     fi
-    
+
     if [[ "$file" == *.swp ]] || [[ "$file" == *.swpx ]] || [[ "$file" == *~ ]] || [[ "$file" == *.lock ]] || [[ "$file" == *.git/* ]] || [[ "$file" == /proc/ ]] || [[ "$file" == /run/ ]]; then
         return 0
     fi
-    
-    
+
+
     if [[ "$event" = "ACCESS" ]] || [[ "$event" = "ACCESS,ISDIR" ]]; then
         echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_ACCESS_LOG_FILE"
         return 0
@@ -308,9 +309,9 @@ log_change() {
         echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file"
         echo "$(date '+%I:%M:%S %Y-%m-%d') - $event - $file" >> "$LOG_FILE"
     fi
-    
-    
-    
+
+
+
     # if file is just created and deleted to quickly it might not exist for git to commit
     # this happens when a binary is dropped changed and deleted quickly to order to avoid detection
     if ! [ -f "$file" ] || ! [ -d "$file" ] ; then
@@ -318,7 +319,7 @@ log_change() {
         echo "$(date '+%I:%M:%S %Y-%m-%d') - WARNING: File doesn't exist, $file - might be a dropped executable"
         return 0
     fi
-    
+
     add_commit "$event" "$file"
 }
 
