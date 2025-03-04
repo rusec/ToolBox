@@ -61,7 +61,7 @@ def log_change(event, file):
     if not watchable(file):
         return False
 
-    if str.upper(event) == "ACCESS" or str.upper(event) == "ACCESS,ISDIR":
+    if "ACCESS" in str.upper(event) or  "CLOSE" in str.upper(event) :
         watchdir_access_log.log("File {} was accessed".format(file))
         return True
 
@@ -69,7 +69,7 @@ def log_change(event, file):
         watchdir_log.log("File {} was deleted - might be a dropped executable".format(file), "WARNING")
         return True
 
-    watchdir_log.log("{} - {}".format(file, event), "INFO")
+    watchdir_log.log("{} - {}".format(event, file), "INFO")
 
 
     git_utils.commit(event, file)
@@ -93,7 +93,7 @@ def set_interval(func, sec):
     return t
 
 
-def inotify_generator(path:str):
+def inotify_generator(path:str) -> str:
 
     if not check_command("inotifywait"):
         log("inotify-tools package is not installed", "ERROR")
@@ -199,16 +199,23 @@ def main():
     print(info)
 
     config.print_config()
+    
+    try:
+        # Start inotifywait
+        log("Starting inotifywait")
+        for line in inotify_generator(config.WATCH_DIR):
+            if not line:
+                continue
 
-    # Start inotifywait
-    log("Starting inotifywait")
-    for line in inotify_generator(config.WATCH_DIR):
-        if not line:
-            continue
+            event, file = line.replace("'", "").split(" ")
 
-        event, file = line.split(" ")
-        # print(event, file)
-        log_change(event, file)
+            log_change(event, file)
 
 
-    # set_interval(git_utils.commit, config.BACKUP_INTERVAL)
+        set_interval(git_utils.backup_git_directory, config.BACKUP_INTERVAL)
+    except KeyboardInterrupt:
+        log("Exiting script")
+        sys.exit(0)
+    except Exception as e:
+        log("Error in main: {}".format(e), "ERROR")
+        sys.exit(1)

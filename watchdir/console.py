@@ -25,6 +25,30 @@ def run_command_sudo(command)-> bool:
         util.log("Cannot run command as sudo", "ERROR")
         return False
 
+def run_command_sudo_check(command, success_message) -> bool:
+    if config.DEBUG:
+        util.log("Running command as sudo: {}".format(command))
+
+    if os.geteuid() != 0:
+        res = getstatusoutput("sudo {}".format(command))
+
+        if config.DEBUG:
+            util.log(res[1])
+
+        return res[0] == 0 or success_message in res[1]
+
+    elif os.geteuid() == 0:
+        res = getstatusoutput(command)
+
+        if config.DEBUG:
+            util.log(res[1])
+
+        return res[0] == 0 or success_message in res[1]
+
+    else:
+        util.log("Cannot run command as sudo", "ERROR")
+        return False
+
 def run_command(command):
     if config.DEBUG:
         util.log("Running command: {}".format(command))

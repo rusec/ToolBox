@@ -29,11 +29,13 @@ class Logger:
 
         # If a timer is already running, cancel it (takes more memory)
         # maybe keeping the old timer is better for performance
-        if self.timer:
+        try:
             self.timer.cancel()
-
-        self.timer = threading.Timer(self.debounce_time, self._flush)
-        self.timer.start()
+        except:
+            pass
+        finally:
+            self.timer = threading.Timer(self.debounce_time, self._flush)
+            self.timer.start()
 
     # Log the message
     # If the message is already in the cache, increment the count
@@ -63,7 +65,7 @@ class Logger:
 
         if self.log_to_console:
             if count > 1:
-                print("[{}] [{}] {} | [{}]".format(time_stamp, level, message, count))
+                print("[{}] [{}] [{}] {}".format(time_stamp,count, level, message))
             else:
                 print("[{}] [{}] {}".format(time_stamp, level, message))
 
@@ -72,7 +74,7 @@ class Logger:
         if self.log_file:
             with open(self.log_file, 'a') as f:
                 if count > 1:
-                    f.write("[{}] [{}] {} | [{}]\n".format(time_stamp, level, message, count))
+                    f.write("[{}] [{}] [{}] {}\n".format(time_stamp,count, level, message))
                 else:
                     f.write("[{}] [{}] {}\n".format(time_stamp, level, message))
 
@@ -81,7 +83,7 @@ class Logger:
         if force:
             self._clean_cache()
             return
-        if self.flushing == False:
+        if self.flushing == True:
             return
         self._clean_cache()
 
@@ -97,7 +99,7 @@ class Logger:
                 break
 
             self.queue.popleft()
-            log_time = datetime.datetime.fromtimestamp(log['last_seen']).strftime('%Y-%m-%d %H:%M:%S')
+            log_time = datetime.datetime.fromtimestamp(log['last_seen']).strftime('%m-%d %I:%M:%S')
             self._write_log(log_time,log['message'], log['level'], log['count'])
             del self.log_cache[log_hash]
 

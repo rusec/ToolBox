@@ -1,4 +1,4 @@
-from console import run_command_sudo
+from console import run_command_sudo, run_command_sudo_check
 import config
 import hashlib
 import os
@@ -31,7 +31,7 @@ def backup_init_repo():
         log("Git repo does not exist in the directory", "ERROR")
         return False
 
-    if not os.path.join(config.WATCH_DIR, ".git"):
+    if not os.path.exists(os.path.join(config.WATCH_DIR, ".git")):
         log("Git repo does not exist in the directory", "ERROR")
         return
 
@@ -55,8 +55,9 @@ def init_repo():
         os.makedirs(repo_dir)
         return False
 
+
     old_dir = os.getcwd()
-    os.chdir(repo_dir)
+    os.chdir(config.WATCH_DIR)
 
     if not run_command_sudo("git config --global user.email 'admin@admin.com'"):
         os.chdir(old_dir)
@@ -84,12 +85,19 @@ def init_repo():
         log("Failed to rename branch", "ERROR")
         return False
 
-    if not run_command_sudo("git add *"):
+
+    if len(os.listdir(config.WATCH_DIR)) == 0:
+        os.chdir(old_dir)
+        log("No files in the directory", "WARNING")
+        log("Git repo initialized successfully")
+        return True
+
+    if not run_command_sudo("git add ."):
         os.chdir(old_dir)
         log("Failed to add files to git", "ERROR")
         return False
 
-    if not run_command_sudo("git commit -m 'Initial commit'"):
+    if not run_command_sudo_check("git commit -m 'Initial commit'", "nothing to commit"):
         os.chdir(old_dir)
         log("Failed to commit files to git", "ERROR")
         return  False
@@ -98,24 +106,6 @@ def init_repo():
     os.chdir(old_dir)
     log("Git repo initialized successfully")
 
-def backup_repo():
-
-    if not os.path.isdir(config.WATCH_DIR):
-        exit_with_error("Watch directory does not exist")
-
-    if not check_repo():
-        log("Repo does not exist")
-        return False
-
-    timestamp = time.strftime("%Y_%m_%d_%I_%M_%S")
-    backup_dir = os.path.join(config.BACKUP_DIR, git_dir_basename, timestamp + ".git")
-
-    if not os.path.isdir(backup_dir):
-        os.makedirs(backup_dir)
-
-    shutil.copytree(repo_dir, backup_dir)
-    log("Backup created successfully")
-
 
 def backup_git_directory():
     current_time = time.strftime("%Y_%m_%d_%I_%M_%S")
@@ -123,7 +113,7 @@ def backup_git_directory():
     if not os.path.isdir(backup_dir):
         os.makedirs(backup_dir)
 
-    if not run_command_sudo("git -C {} push --mirror {}".format(config.WATCH_DIR, backup_dir)):
+    if not run_command_sudo("git clone --mirror {} {}".format(config.WATCH_DIR, backup_dir)):
         git_log.log("Failed to backup git directory", "ERROR")
         return False
 
@@ -150,7 +140,7 @@ def commit(event, file):
         git_log.log("Failed to add file to git", "ERROR")
         return False
 
-    if not run_command_sudo("git -C {} commit -m '{} - {}'".format(config.WATCH_DIR, event, file)):
+    if not run_command_sudo_check("git -C {} commit -m '{} - {}'".format(config.WATCH_DIR, event, file), "nothing to commit"):
         git_log.log("Failed to commit file to git", "ERROR")
         return False
 

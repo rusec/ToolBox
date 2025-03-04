@@ -5,5 +5,5 @@ def exit_with_error(message):
     sys.exit(1)
 
 def log(message, level="INFO"):
-    current_time= time.strftime("%m-%d %H:%M:%S")
+    current_time= time.strftime("%m-%d %I:%M:%S")
     print("[{}] [{}] {}".format(level,current_time, message))
