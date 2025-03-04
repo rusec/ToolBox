@@ -53,8 +53,6 @@ def init_repo():
 
     if not os.path.isdir(repo_dir):
         os.makedirs(repo_dir)
-        return False
-
 
     old_dir = os.getcwd()
     os.chdir(config.WATCH_DIR)
@@ -77,7 +75,7 @@ def init_repo():
     # creates  a separate git directory, but a .git file is created in the watch directory
     if not run_command_sudo("git init --separate-git-dir {} {}".format(repo_dir, config.WATCH_DIR)):
         os.chdir(old_dir)
-        log("Failed to initialize git repo", "ERROR")
+        log("Failed to initialize git repo in separate dir", "ERROR")
         return False
 
     if not run_command_sudo("git branch -m main"):
@@ -105,6 +103,8 @@ def init_repo():
     backup_init_repo()
     os.chdir(old_dir)
     log("Git repo initialized successfully")
+
+    return True
 
 
 def backup_git_directory():
