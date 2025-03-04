@@ -49,8 +49,7 @@ if not os.path.isdir(BACKUP_DIR):
 def print_config():
 
     log("WATCH_DIR: {}".format(WATCH_DIR))
-    log("BASE_DIR: {}".format(BASE_DIR))
-    log("BASE_NAME: {}".format(BASE_NAME))
+    log("AUDITDKEY: {}".format(AUDITDKEY))
     log("LOG_DIR: {}".format(LOG_DIR))
     log("WATCH_DIR_LOG_FILE: {}".format(WATCH_DIR_LOG_FILE))
     log("WATCH_ACCESS_LOG_FILE: {}".format(WATCH_ACCESS_LOG_FILE))
