@@ -1,18 +1,13 @@
-# Import Group Policy module
 Import-Module GroupPolicy
 
-# Define variables
 $GPOName = "Default Domain Policy"
 $GPODescription = "Configured via PowerShell."
 
-# Enable verbose logging for debugging
 $VerbosePreference = "Continue"
 
-# Retrieve the Default Domain Policy
 $GPO = Get-GPO -Name $GPOName -ErrorAction Stop
 Write-Host "Using Default Domain Policy."
 
-# Registry-based settings
 $RegistrySettings = @(
     @{ KeyPath = "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"; ValueName = "NoAutoUpdate"; ValueType = "DWord"; ValueData = 1 },
     @{ KeyPath = "HKLM\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters"; ValueName = "RestrictNullSessAccess"; ValueType = "DWord"; ValueData = 1 },
@@ -27,13 +22,11 @@ foreach ($Setting in $RegistrySettings) {
     }
 }
 
-# Define the domain name
 $Domain = "RUSEC.org"
 
-# password policy settings
 Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MinPasswordLength 25  
 Set-ADDefaultDomainPasswordPolicy -Identity $Domain -LockoutDuration 00:10:00 
-Set-ADDefaultDomainPasswordPolicy -Identity $Domain -LockoutObservationWindow 00:20:00 
+Set-ADDefaultDomainPasswordPolicy -Identity $Domain -LockoutObservationWindow 20
 Set-ADDefaultDomainPasswordPolicy -Identity $Domain -ComplexityEnabled $true 
 Set-ADDefaultDomainPasswordPolicy -Identity $Domain -ReversibleEncryptionEnabled $false 
 Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MinPasswordAge 1.00:00:00 
@@ -41,7 +34,6 @@ Set-ADDefaultDomainPasswordPolicy -Identity $Domain -MaxPasswordAge 7.00:00:00
 Set-ADDefaultDomainPasswordPolicy -Identity $Domain -PasswordHistoryCount 0
 Write-Host "Password policies applied."
 
-# Configure audit policies
 $AuditCategories = @(
     "Account Logon", "Account Management", "Directory Service Access",
     "Logon Events", "Object Access", "Policy Change",
@@ -59,7 +51,7 @@ foreach ($Category in $AuditCategories) {
     }
 }
 
-# Configure user rights assignments
+
 $UserRights = @{
     "Access this computer from the network"        = @("Administrators", "Authenticated Users")
     "Allow log on locally"                         = @("Administrators", "Backup Operators")
@@ -80,10 +72,7 @@ foreach ($Right in $UserRights.Keys) {
 
 Write-Host "Audit policies and user rights assignments configured"
 
-# Generate and display GPO report
 $ReportPath = "$env:TEMP\$GPOName.html"
 Get-GPOReport -Name $GPOName -ReportType HTML -Path $ReportPath
 Write-Host "GPO Report generated: $ReportPath"
-
-# Force a GPUpdate
 Invoke-GPUpdate -Force -RandomDelayInMinutes 0
