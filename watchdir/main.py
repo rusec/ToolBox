@@ -93,7 +93,7 @@ def set_interval(func, sec):
     return t
 
 
-def inotify_generator(path:str) -> str:
+def inotify_generator(path:str):
 
     if not check_command("inotifywait"):
         log("inotify-tools package is not installed", "ERROR")
