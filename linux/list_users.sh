@@ -37,7 +37,7 @@ do
         is_sudo=True
     fi
 
-    login_bin=$(cat /etc/passwd | awk -F: '{ print $1,$7 }' | grep $user | awk '{ print $2 }')  
+    login_bin=$(cat /etc/passwd | awk -F: '{ print $1,$7 }' | grep "$user " | awk '{ print $2 }')
 
 
     message=""
@@ -45,17 +45,17 @@ do
     if [[ "$is_sudo" == "True" ]]; then
         message="${message}${YELLOW}"
     fi
-        
-    if [[ "$login_bin" != *"nologin" ]] && [[ "$login_bin" != *"false" ]]; then
+
+    if [[ "$login_bin" != *"nologin" ]] && [[ "$login_bin" != *"false" ]] && [[ "$login_bin" != *"shutdown" ]] && [[ "$login_bin" != *"halt" ]] && [[ "$login_bin" != *"halt" ]] && [[ "$login_bin" != *"sync" ]]; then
         message="${message}${GREEN}"
     else
         message="${message}${RED}"
-    fi 
+    fi
 
-    message="${message}${BOLD}$user${NORMAL} | $groups | $login_bin" 
+    message="${message}${BOLD}$user${NORMAL} | $groups | $login_bin"
     echo -e $message
 
 
-    
+
 
 done
