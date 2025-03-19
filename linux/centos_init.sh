@@ -19,4 +19,7 @@ sudo make altinstall
 sudo ln -sfn /usr/local/bin/python3.7 /usr/bin/python3.7
 sudo ln -sfn /usr/local/bin/pip3.7 /usr/bin/pip3.7
 
+rm -rf /tmp/Python-3.7.9
+rm -f /tmp/Python-3.7.9.tgz
+
 cd -
