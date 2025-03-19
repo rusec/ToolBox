@@ -1,14 +1,12 @@
 function Show-Popup {
-    param (
-        [string]$message
-    )
+    param ([string]$message)
     
     Add-Type -TypeDefinition @"
     using System;
     using System.Windows.Forms;
     public class Notification {
         public static void Show(string message) {
-            MessageBox.Show(message, "New Service or Task Created", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(message, "New Service Created", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 "@
@@ -16,36 +14,35 @@ function Show-Popup {
     [Notification]::Show($message)
 }
 
+# Store existing services
+$existingServices = Get-WmiObject -Class Win32_Service | Select-Object -ExpandProperty Name
 
-$serviceQuery = Get-WmiObject -Class Win32_Service | Select-Object Name
-$existingServices = $serviceQuery.Name
+# Register an event for service creation
+Register-WmiEvent -Query "SELECT * FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Service'" `
+                  -SourceIdentifier "NewServiceEvent" `
+                  -Action {
+                      $newService = $Event.SourceEventArgs.NewEvent.TargetInstance
+                      $newServiceName = $newService.Name
+                      if ($existingServices -notcontains $newServiceName) {
+                          $existingServices += $newServiceName
+                          Show-Popup -message "A new service has been created: $newServiceName"
+                      }
+                  }
 
-$scheduledTaskQuery = Get-ScheduledTask | Select-Object TaskName
-$existingTasks = $scheduledTaskQuery.TaskName
+Write-Host "Monitoring new services and tasks. Press Ctrl+C to stop."
+$existingTasks = Get-ScheduledTask | Select-Object -ExpandProperty TaskName
 
-$serviceWatcher = New-Object Management.ManagementEventWatcher -ArgumentList "SELECT * FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance ISA 'Win32_Service'"
-$taskWatcher = New-Object Management.ManagementEventWatcher -ArgumentList "SELECT * FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance ISA 'Win32_ScheduledJob'"
+# Keep script running indefinitely
+while ($true) { Start-Sleep -Seconds 60 
+ # Check for new scheduled tasks
+ $currentTasks = Get-ScheduledTask | Select-Object -ExpandProperty TaskName
+ $newTasks = $currentTasks | Where-Object { $existingTasks -notcontains $_ }
+ 
+ foreach ($task in $newTasks) {
+     $existingTasks += $task
+     Show-Popup -message "A new scheduled task has been created: $task"
 
-$serviceWatcher.EventArrived += {
-    $newService = $_.NewEvent.TargetInstance
-    $newServiceName = $newService.Name
-    if ($existingServices -notcontains $newServiceName) {
-        $existingServices += $newServiceName
-        Show-Popup -message "A new service has been created: $newServiceName"
     }
+
 }
 
-$taskWatcher.EventArrived += {
-    $newTask = $_.NewEvent.TargetInstance
-    $newTaskName = $newTask.TaskName
-    if ($existingTasks -notcontains $newTaskName) {
-        $existingTasks += $newTaskName
-        Show-Popup -message "A new scheduled task has been created: $newTaskName"
-    }
-}
-
-$serviceWatcher.Start()
-$taskWatcher.Start()
-
-Write-Host "Monitoring new services and scheduled tasks. Press Ctrl+C to stop."
-while ($true) { Start-Sleep -Seconds 60 }

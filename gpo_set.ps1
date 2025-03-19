@@ -1,3 +1,5 @@
+# I Love Blue Monster.
+
 Import-Module GroupPolicy
 
 $GPOName = "Default Domain Policy"
