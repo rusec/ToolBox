@@ -65,7 +65,7 @@ def log_change(event, file):
         watchdir_access_log.log("File {} was accessed".format(file))
         return True
 
-    if not os.path.exists(file):
+    if not os.path.exists(file) and not "DELETE" in str.upper(event):
         watchdir_log.log("File {} was deleted - might be a dropped executable".format(file), "WARNING")
         return True
 
@@ -131,7 +131,7 @@ def inotify_generator(path:str):
         process.terminate()
 
 
-def main():
+def start():
     log("Starting script on directory: {}".format(config.WATCH_DIR))
 
     if config.DEBUG:
@@ -199,7 +199,7 @@ def main():
     print(info)
 
     config.print_config()
-    
+
     try:
         # Start inotifywait
         log("Starting inotifywait")
