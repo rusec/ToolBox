@@ -1,5 +1,3 @@
-# I Love Blue Monster.
-
 Import-Module GroupPolicy
 
 $GPOName = "Default Domain Policy"
@@ -45,7 +43,6 @@ $AuditCategories = @(
 Write-Host "Configuring audit policies..."
 foreach ($Category in $AuditCategories) {
     try {
-        # Set audit policy for the category
         Set-GPAuditPolicy -Name $GPOName -AuditCategory $Category -Success $true -Failure $true
         Write-Host "Configured audit policy for category: $Category."
     } catch {
@@ -64,7 +61,6 @@ Write-Host "Configuring user rights assignments..."
 foreach ($Right in $UserRights.Keys) {
     $Accounts = $UserRights[$Right]
     try {
-        # Set user rights assignment
         Set-GPUserRight -Name $GPOName -PolicyName $Right -Users $Accounts
         Write-Host "Configured user right: $Right for accounts: $($Accounts -join ', ')."
     } catch {
