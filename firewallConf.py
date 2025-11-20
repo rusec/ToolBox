@@ -25,6 +25,7 @@ def defaultConfig():
 	os.system('sudo ufw allow in ssh comment "Allow SSH"')
 
 	# TODO: DNS?
+	os.system('sudo ufw allow in dns comment "Allow DNS"')
 
 	# Block Telnet
 	os.system('sudo ufw deny telnet     comment "Deny Telnet in"')

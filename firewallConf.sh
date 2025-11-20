@@ -5,6 +5,7 @@ function ufw-custom {
                 printf "\nUFW is not installed yet.\n\n"
         elif [ "$1" = "enable" ]; then
                 sudo ufw allow in to any port 22
+                sudo ufw allow in to any port 53
                 sudo ufw allow in to any port 80
                 sudo ufw allow in to any port 443
 		sudo ufw deny in to any port 4444
