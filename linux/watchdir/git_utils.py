@@ -8,10 +8,19 @@ import logger
 import time
 
 
-base_name = os.path.basename(config.WATCH_DIR)
-git_dir_basename = base_name + "_" +hashlib.md5(base_name.encode()).hexdigest()
-repo_dir = os.path.join(config.BACKUP_DIR, git_dir_basename, "current.git")
-git_log = logger.Logger(2, log_file=os.path.join(config.LOG_DIR, config.WATCH_GIT_LOG_FILE))
+base_name = None
+git_dir_basename = None
+repo_dir = None
+git_log = None
+
+def init():
+    global base_name, git_dir_basename, repo_dir, git_log
+    
+    # helper for git_utils that depend on config
+    base_name = os.path.basename(config.WATCH_DIR)
+    git_dir_basename = base_name + "_" + hashlib.md5(base_name.encode()).hexdigest()
+    repo_dir = os.path.join(config.BACKUP_DIR, git_dir_basename, "current.git")
+    git_log = logger.Logger(2, log_file=os.path.join(config.LOG_DIR, config.WATCH_GIT_LOG_FILE))
 
 def check_repo():
     # repo is a separate directory

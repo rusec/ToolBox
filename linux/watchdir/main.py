@@ -26,12 +26,13 @@ import os
 import atexit
 import subprocess
 import threading
+import argparse
 
 
 
 # create two loggers, one for the watchdir and one for access logs, to order to not mix them up, makes them easier to read
-watchdir_log = logger.Logger(2, log_to_console=True, log_file=config.WATCH_DIR_LOG_FILE)
-watchdir_access_log = logger.Logger(2, log_file=config.WATCH_ACCESS_LOG_FILE)
+watchdir_log = None
+watchdir_access_log = None
 
 
 
@@ -128,9 +129,12 @@ def on_exit():
     """
     Flush the logs and close the git repo.
     """
-    watchdir_log._flush(True)
-    watchdir_access_log._flush(True)
-    git_utils.git_log._flush(True)
+    if watchdir_log:
+        watchdir_log._flush(True)
+    if watchdir_access_log:
+        watchdir_access_log._flush(True)
+    if git_utils.git_log:
+        git_utils.git_log._flush(True)
 
 # Close the git repo on exit
 atexit.register(on_exit)
@@ -296,3 +300,24 @@ def start():
     except Exception as e:
         log("Error in main: {}".format(e), "ERROR")
         sys.exit(1)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Watch a directory for changes and log them to a git repository.")
+    parser.add_argument("directory", help="The directory to watch")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    config.init(args.directory)
+    git_utils.init()
+
+    global watchdir_log, watchdir_access_log
+    watchdir_log = logger.Logger(2, log_to_console=True, log_file=config.WATCH_DIR_LOG_FILE)
+    watchdir_access_log = logger.Logger(2, log_file=config.WATCH_ACCESS_LOG_FILE)
+
+    start()
+
+if __name__ == "__main__":
+    main()

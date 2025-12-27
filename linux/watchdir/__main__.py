@@ -8,4 +8,4 @@ if os.getuid() != 0:
 
 print()
 
-main.start()
+main.main()
