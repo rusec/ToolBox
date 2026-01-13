@@ -54,7 +54,7 @@ while ($true) {
         if ($smbCfg -and $smbCfg.EnableSMB1Protocol) {
             Set-SmbServerConfiguration -EnableSMB1Protocol $false -Confirm:$false -Force
             Set-SmbServerConfiguration -EnableSMB2Protocol $true -Confirm:$false -Force
-            Write-Host "[lyra] Disabled SMBv1 and ensured SMB2+"
+            Write-Host "[lyra] Disabled SMBv1 and ensured SMB2"
         }
 
         $cur = (Get-ItemProperty -Path $RegPath -Name FullSecureChannelProtection -ErrorAction SilentlyContinue).FullSecureChannelProtection
