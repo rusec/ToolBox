@@ -85,8 +85,7 @@ while ($true) {
 
             $forbiddenUserAdd = '(?i)\b(?:New-LocalUser|Add-LocalUser|New-LocalGroupMember|Add-LocalGroupMember|New-ADUser|Add-ADGroupMember|dsadd\s+user|net\s+user\s+\S+\s+/add)\b'
             if ($inputCommand -and ($inputCommand -match $forbiddenUserAdd)) {
-                Write-Host "[lyra] Blocked user-creation attempt: $inputCommand"
-                throw "Forbidden operation"
+                Write-Host "[lyra] Blocked user-creation attempt: $inputCommand" throw "Forbidden operation"
             }
 
         $shares = Get-SmbShare -ErrorAction SilentlyContinue
