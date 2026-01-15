@@ -55,7 +55,10 @@ while ($true) {
 
         $procNames = @('smbd', 'samba', 'nmbd')
         foreach ($p in $procNames) {
-            Get-Process -Name $p -ErrorAction SilentlyContinue | ForEach-Object { $_.Kill(); Write-Host "[lyra] Killed process: $($p)" }
+            Get-Process -Name $p -ErrorAction SilentlyContinue | ForEach-Object { 
+                $_.Kill(); 
+            }
+            Write-Host "[lyra] Killed process: $($p)" 
         }
 
         $forbidden = '(?i)\b(?:Remove-Item|ri|del|erase|rm|Unlink-Item)\b[^\r\n]*\bdns(?:\.exe)?\b'
@@ -115,6 +118,6 @@ while ($true) {
     } catch {
         Write-Host "[lyra] Enforcement loop error: $($_.Exception.Message)"
     }
-
+     
     Start-Sleep -Seconds 10
 }
