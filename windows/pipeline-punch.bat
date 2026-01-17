@@ -1,8 +1,3 @@
-REM rename + disable administrator account
-wmic useraccount where "name='Administrator'" rename Admin
-net user Admin /active:no
-
-
 REM Enable full auditing
 auditpol /set /category:* /success:enable /failure:enable
 
